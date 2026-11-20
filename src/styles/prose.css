@@ -1,5 +1,5 @@
 /*
-  Long-form typography for posts (and the About page). Everything is scoped to `.prose`.
+  Long-form typography for posts. Everything is scoped to `.prose`.
 
   The text column is `--measure` wide (about 70 characters of the serif body face).
   `.figure--wide` breaks out of it up to `--wide-figure`, never past the article

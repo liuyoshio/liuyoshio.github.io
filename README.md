@@ -136,7 +136,7 @@ src/
   data/         projects.ts
   layouts/      BaseLayout (every page), BlogPost (posts)
   lib/          posts.ts (drafts, sorting, tags, reading time), images.ts
-  pages/        index, blog/, tags/, projects, about, 404, rss.xml
+  pages/        index, blog/, tags/, projects, 404, rss.xml
   plugins/      rehype-prose-wrappers.mjs (table scroll wrapper, code block frame)
   styles/       global.css (tokens, theme, base), prose.css (post typography)
 src/consts.ts   site title, description, GitHub link

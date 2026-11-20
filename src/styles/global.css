@@ -36,7 +36,7 @@
 
 	/* Layout */
 	--gutter: 1rem;
-	--narrow: 44rem; /* lists, about, projects; close to the post text measure */
+	--narrow: 44rem; /* lists and projects; close to the post text measure */
 	--wide: 76rem; /* post pages with a side table of contents */
 	--page-width: var(--narrow);
 	--radius: 8px;
