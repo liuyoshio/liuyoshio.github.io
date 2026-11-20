@@ -1,0 +1,192 @@
+/*
+  Extra roles for the operator diagrams (OperatorArchitecture, HandsPipeline, ApprovalRoutes,
+  ConsentGate). They follow the product's overlay:
+
+    coral   the agent's hands and the marks they leave on screen: ring, ghost cursor, label
+    yellow  the user is busy: a step runs in the background, or waits for the front
+    glass   the overlay's own dark material (the approval card, the mark's label), in both themes
+
+  Light coral is a step deeper than the overlay's #ff805c, so a thin ring keeps 3:1 on white.
+  Theme selectors match diagrams.css.
+*/
+
+.diagram {
+	--op-coral: #f26b45;
+	--op-coral-ink: #b8431e;
+	--op-yel: #b88600;
+	--op-yel-ink: #7a5a00;
+	--op-glass: #202126;
+	--op-glass-edge: #202126;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .diagram {
+		--op-coral: #ff805c;
+		--op-coral-ink: #ff9d80;
+		--op-yel: #f0c419;
+		--op-yel-ink: #f0c419;
+		--op-glass: #2a2c32;
+		--op-glass-edge: #464951;
+	}
+}
+
+:root[data-theme='dark'] .diagram {
+	--op-coral: #ff805c;
+	--op-coral-ink: #ff9d80;
+	--op-yel: #f0c419;
+	--op-yel-ink: #f0c419;
+	--op-glass: #2a2c32;
+	--op-glass-edge: #464951;
+}
+
+:root [data-dg-theme='light'] .diagram {
+	--op-coral: #f26b45;
+	--op-coral-ink: #b8431e;
+	--op-yel: #b88600;
+	--op-yel-ink: #7a5a00;
+	--op-glass: #202126;
+	--op-glass-edge: #202126;
+}
+
+:root [data-dg-theme='dark'] .diagram {
+	--op-coral: #ff805c;
+	--op-coral-ink: #ff9d80;
+	--op-yel: #f0c419;
+	--op-yel-ink: #f0c419;
+	--op-glass: #2a2c32;
+	--op-glass-edge: #464951;
+}
+
+/* ---------- Coral: the hands and their marks ---------- */
+
+.dg-svg .op-coral {
+	fill: var(--op-coral);
+}
+.dg-svg .op-ring {
+	fill: none;
+	stroke: var(--op-coral);
+	stroke-width: 2.5;
+}
+.dg-svg .op-halo {
+	fill: none;
+	stroke: var(--op-coral);
+	stroke-opacity: 0.2;
+	stroke-width: 8;
+}
+.dg-svg .op-coral-box {
+	fill: color-mix(in srgb, var(--op-coral) 9%, var(--dg-surface));
+	stroke: var(--op-coral);
+	stroke-width: 1.5;
+}
+.dg-svg .op-ghost {
+	fill: #ffffff;
+	stroke: var(--op-coral);
+	stroke-width: 1.6;
+	stroke-linejoin: round;
+}
+.dg-svg text.op-ct,
+.dg-svg tspan.op-ct {
+	fill: var(--op-coral-ink);
+}
+.dg-svg .op-arrow-coral-line {
+	stroke: var(--op-coral);
+	stroke-width: 2;
+	fill: none;
+}
+.dg-svg .op-arrow-coral-head {
+	fill: var(--op-coral);
+}
+
+/* ---------- Yellow: the user is busy ---------- */
+
+.dg-svg .op-yel {
+	fill: var(--op-yel);
+}
+.dg-svg .op-yel-box {
+	fill: color-mix(in srgb, var(--op-yel) 12%, var(--dg-surface));
+	stroke: var(--op-yel);
+	stroke-width: 1.5;
+}
+.dg-svg .op-yel-ring {
+	fill: var(--dg-surface);
+	stroke: var(--op-yel);
+	stroke-width: 2;
+}
+
+/* ---------- Outcomes ---------- */
+
+.dg-svg .op-ok-box {
+	fill: color-mix(in srgb, var(--dg-ours) 10%, var(--dg-surface));
+	stroke: var(--dg-ours);
+	stroke-width: 1.5;
+}
+.dg-svg .op-ok {
+	fill: var(--dg-ours);
+}
+.dg-svg .op-crit-box {
+	fill: color-mix(in srgb, var(--dg-crit) 9%, var(--dg-surface));
+	stroke: var(--dg-crit);
+	stroke-width: 1.5;
+}
+.dg-svg .op-chip {
+	fill: color-mix(in srgb, var(--text) 6%, var(--dg-surface));
+}
+.dg-svg .op-node {
+	fill: var(--dg-surface);
+	stroke: var(--text);
+	stroke-width: 1.5;
+}
+.dg-svg text.op-ink {
+	fill: var(--text);
+}
+.dg-svg text.op-mu {
+	fill: var(--text-muted);
+}
+.dg-svg .op-dash {
+	stroke-dasharray: 5 4;
+}
+
+/* ---------- Glass: the overlay's own material ---------- */
+
+.dg-svg .op-glass {
+	fill: var(--op-glass);
+	stroke: var(--op-glass-edge);
+	stroke-width: 1;
+}
+.dg-svg text.op-gt,
+.dg-svg tspan.op-gt {
+	fill: #f3f3f4;
+}
+.dg-svg text.op-gs,
+.dg-svg tspan.op-gs {
+	fill: #a9abb2;
+}
+.dg-svg .op-glass-line {
+	stroke: #ffffff;
+	stroke-opacity: 0.14;
+	stroke-width: 1;
+}
+.dg-svg .op-btn {
+	fill: #f3f3f4;
+}
+.dg-svg text.op-btn-t {
+	fill: #1d1d1f;
+	font-weight: 600;
+}
+.dg-svg .op-btn-2 {
+	fill: #ffffff;
+	fill-opacity: 0.12;
+}
+.dg-svg .op-mic {
+	fill: none;
+	stroke: #a9abb2;
+	stroke-width: 1.3;
+	stroke-linecap: round;
+}
+
+@media (forced-colors: active) {
+	.dg-svg .op-ring,
+	.dg-svg .op-arrow-coral-line {
+		stroke: Highlight;
+	}
+}

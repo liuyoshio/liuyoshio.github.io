@@ -1,0 +1,422 @@
+/*
+  Shared styles for the inline-SVG diagrams in src/components/diagrams/.
+
+  Colour roles (same concept, same colour, in every diagram):
+    KV state      active (in a request) = blue · idle (agent waiting on a tool) = orange ·
+                  shared prompt prefix = aqua · offloaded = idle KV drawn as an outline in a
+                  host-RAM box · free cells = surface with a hairline
+    configuration B1 fixed K = grey · B2 llama.cpp host cache = violet ·
+                  gate + llama.cpp purge = magenta · ours / managed lifecycle = green
+    status        failure, overflow, deficit = critical red, always with a mark and a label
+
+  Hues are the dataviz reference palette steps for each mode. The three KV-state hues pass the
+  all-pairs CVD checks in both modes; so do green, violet and magenta (checked with the
+  dataviz validator against #ffffff and #1b1e22). Grey is the de-emphasis neutral.
+
+  Dark values apply when the OS prefers dark (unless the reader chose light) or when the
+  reader chose dark, matching src/styles/global.css. [data-dg-theme] forces a theme for a
+  subtree (used by the review page only).
+*/
+
+.diagram {
+	--dg-surface: #ffffff;
+	--dg-active: #2a78d6;
+	--dg-idle: #eb6834;
+	--dg-prefix: #1baf7a;
+	--dg-ours: #008300;
+	--dg-b1: #80858e;
+	--dg-b2: #6250d6;
+	--dg-purge: #e87ba4;
+	--dg-crit: #d03b3b;
+	--dg-grid: var(--border);
+	--dg-axis: var(--border-strong);
+	--dg-soft: 28%; /* share of the series colour in soft tints */
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .diagram {
+		--dg-surface: var(--bg-subtle);
+		--dg-active: #3987e5;
+		--dg-idle: #d95926;
+		--dg-prefix: #199e70;
+		--dg-ours: #0ca30c;
+		--dg-b1: #8b9097;
+		--dg-b2: #9085e9;
+		--dg-purge: #d55181;
+		--dg-soft: 42%;
+	}
+}
+
+:root[data-theme='dark'] .diagram {
+	--dg-surface: var(--bg-subtle);
+	--dg-active: #3987e5;
+	--dg-idle: #d95926;
+	--dg-prefix: #199e70;
+	--dg-ours: #0ca30c;
+	--dg-b1: #8b9097;
+	--dg-b2: #9085e9;
+	--dg-purge: #d55181;
+	--dg-soft: 42%;
+}
+
+:root [data-dg-theme='light'] .diagram {
+	--dg-surface: #ffffff;
+	--dg-active: #2a78d6;
+	--dg-idle: #eb6834;
+	--dg-prefix: #1baf7a;
+	--dg-ours: #008300;
+	--dg-b1: #80858e;
+	--dg-b2: #6250d6;
+	--dg-purge: #e87ba4;
+	--dg-soft: 28%;
+}
+
+:root [data-dg-theme='dark'] .diagram {
+	--dg-surface: var(--bg-subtle);
+	--dg-active: #3987e5;
+	--dg-idle: #d95926;
+	--dg-prefix: #199e70;
+	--dg-ours: #0ca30c;
+	--dg-b1: #8b9097;
+	--dg-b2: #9085e9;
+	--dg-purge: #d55181;
+	--dg-soft: 42%;
+}
+
+/* ---------- Frame ---------- */
+
+.diagram-frame {
+	container: dg / inline-size;
+	overflow-x: auto;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--dg-surface);
+	-webkit-overflow-scrolling: touch;
+}
+
+.diagram-view--narrow {
+	display: none;
+}
+
+/* Dual layouts: the narrow drawing replaces the wide one below 600px of figure width. */
+@container dg (max-width: 599.98px) {
+	.diagram--dual .diagram-view--main {
+		display: none;
+	}
+	.diagram--dual .diagram-view--narrow {
+		display: block;
+	}
+}
+
+.dg-svg {
+	display: block;
+	width: 100%;
+	height: auto;
+	max-width: var(--dg-max, 800px);
+	min-width: var(--dg-min, 0);
+	margin-inline: auto;
+}
+
+.diagram figcaption {
+	max-width: 44rem;
+	margin: 0.75rem auto 0;
+	color: var(--text-muted);
+	font-family: var(--sans);
+	font-size: 0.875rem;
+	line-height: 1.55;
+	text-align: center;
+	text-wrap: pretty;
+}
+
+/* ---------- Text ---------- */
+
+.dg-svg text {
+	font-family: var(--sans);
+	fill: var(--text);
+	font-variant-numeric: tabular-nums;
+}
+
+.dg-svg .dg-t {
+	font-size: 13px;
+}
+
+.dg-svg .dg-s {
+	font-size: 12.5px;
+	fill: var(--text-muted);
+}
+
+.dg-svg .dg-h {
+	font-size: 14px;
+	font-weight: 650;
+}
+
+.dg-svg .dg-m,
+.dg-svg tspan.dg-m {
+	font-family: var(--mono);
+	font-size: 12px;
+}
+
+.dg-svg .dg-in {
+	font-size: 12.5px;
+	font-weight: 600;
+	fill: #ffffff;
+}
+
+.dg-svg .dg-b,
+.dg-svg tspan.dg-b {
+	font-weight: 650;
+}
+
+.dg-svg tspan.dg-mu {
+	fill: var(--text-muted);
+}
+
+.dg-svg .dg-big {
+	font-size: 20px;
+	font-weight: 680;
+}
+
+.dg-svg .dg-crit-t {
+	font-size: 12.5px;
+	font-weight: 650;
+	fill: var(--text);
+}
+
+/* ---------- Fills (KV states) ---------- */
+
+.dg-svg .f-active {
+	fill: var(--dg-active);
+}
+.dg-svg .f-idle {
+	fill: var(--dg-idle);
+}
+.dg-svg .f-prefix {
+	fill: var(--dg-prefix);
+}
+.dg-svg .f-active-soft {
+	fill: color-mix(in srgb, var(--dg-active) var(--dg-soft), var(--dg-surface));
+}
+.dg-svg .f-idle-soft {
+	fill: color-mix(in srgb, var(--dg-idle) var(--dg-soft), var(--dg-surface));
+}
+.dg-svg .f-prefix-soft {
+	fill: color-mix(in srgb, var(--dg-prefix) var(--dg-soft), var(--dg-surface));
+}
+/* Offloaded: idle KV that now lives in host RAM (outline + wash). */
+.dg-svg .f-off {
+	fill: color-mix(in srgb, var(--dg-idle) 14%, var(--dg-surface));
+	stroke: var(--dg-idle);
+	stroke-width: 1.5;
+}
+.dg-svg .f-free {
+	fill: var(--dg-surface);
+	stroke: var(--dg-axis);
+	stroke-width: 1;
+}
+.dg-svg .f-wash {
+	fill: color-mix(in srgb, var(--text) 6%, var(--dg-surface));
+}
+.dg-svg .f-wash-2 {
+	fill: color-mix(in srgb, var(--text) 11%, var(--dg-surface));
+}
+.dg-svg .f-box {
+	fill: var(--dg-surface);
+	stroke: var(--dg-axis);
+	stroke-width: 1;
+}
+.dg-svg .f-box-soft {
+	fill: color-mix(in srgb, var(--text) 4%, var(--dg-surface));
+	stroke: var(--dg-axis);
+	stroke-width: 1;
+}
+.dg-svg .f-accent-box {
+	fill: color-mix(in srgb, var(--accent) 8%, var(--dg-surface));
+	stroke: var(--accent);
+	stroke-width: 1.5;
+}
+.dg-svg .f-crit {
+	fill: var(--dg-crit);
+}
+.dg-svg .f-crit-soft {
+	fill: color-mix(in srgb, var(--dg-crit) 16%, var(--dg-surface));
+	stroke: var(--dg-crit);
+	stroke-width: 1.5;
+}
+.dg-svg .f-ink {
+	fill: var(--text);
+}
+.dg-svg .f-muted {
+	fill: var(--text-muted);
+}
+.dg-svg .f-surface {
+	fill: var(--dg-surface);
+}
+
+/* ---------- Fills (configurations) ---------- */
+
+.dg-svg .f-b1 {
+	fill: var(--dg-b1);
+}
+.dg-svg .f-b2 {
+	fill: var(--dg-b2);
+}
+.dg-svg .f-purge {
+	fill: var(--dg-purge);
+}
+.dg-svg .f-ours {
+	fill: var(--dg-ours);
+}
+
+/* Dots: filled = every task completed; hollow ring = some tasks failed. Surface ring keeps
+   overlapping marks apart. */
+.dg-svg .dot {
+	stroke: var(--dg-surface);
+	stroke-width: 2;
+}
+.dg-svg .ring {
+	fill: var(--dg-surface);
+	stroke-width: 2.25;
+}
+.dg-svg .ring.c-b1 {
+	stroke: var(--dg-b1);
+}
+.dg-svg .ring.c-b2 {
+	stroke: var(--dg-b2);
+}
+.dg-svg .ring.c-purge {
+	stroke: var(--dg-purge);
+}
+.dg-svg .ring.c-ours {
+	stroke: var(--dg-ours);
+}
+
+/* ---------- Strokes ---------- */
+
+.dg-svg .s-grid {
+	stroke: var(--dg-grid);
+	stroke-width: 1;
+}
+.dg-svg .s-axis {
+	stroke: var(--dg-axis);
+	stroke-width: 1;
+}
+.dg-svg .s-ink {
+	stroke: var(--text);
+	stroke-width: 1.5;
+	fill: none;
+}
+.dg-svg .s-muted {
+	stroke: var(--text-muted);
+	stroke-width: 1.25;
+	fill: none;
+}
+.dg-svg .s-faint {
+	stroke: var(--text-faint);
+	stroke-width: 1;
+	fill: none;
+}
+.dg-svg .s-budget {
+	stroke: var(--text);
+	stroke-width: 1.5;
+}
+.dg-svg .s-crit {
+	stroke: var(--dg-crit);
+	stroke-width: 2;
+	fill: none;
+}
+.dg-svg .s-active {
+	stroke: var(--dg-active);
+	stroke-width: 2;
+	fill: none;
+}
+.dg-svg .s-idle {
+	stroke: var(--dg-idle);
+	stroke-width: 2;
+	fill: none;
+}
+.dg-svg .s-prefix {
+	stroke: var(--dg-prefix);
+	stroke-width: 2;
+	fill: none;
+}
+.dg-svg .s-ours {
+	stroke: var(--dg-ours);
+	stroke-width: 2;
+	fill: none;
+}
+.dg-svg .s-range {
+	stroke-width: 2;
+	stroke-linecap: round;
+}
+.dg-svg .s-range.c-b1 {
+	stroke: var(--dg-b1);
+}
+.dg-svg .s-range.c-b2 {
+	stroke: var(--dg-b2);
+}
+.dg-svg .s-range.c-purge {
+	stroke: var(--dg-purge);
+}
+.dg-svg .s-range.c-ours {
+	stroke: var(--dg-ours);
+}
+.dg-svg .s-surface {
+	stroke: var(--dg-surface);
+	stroke-width: 2;
+}
+
+/* Arrows: arrow() emits a <g class="X"> with X-line and X-head children. */
+.dg-svg .dg-arrow-line {
+	stroke: var(--text-muted);
+	stroke-width: 1.5;
+	fill: none;
+}
+.dg-svg .dg-arrow-head {
+	fill: var(--text-muted);
+}
+.dg-svg .dg-arrow-ink-line {
+	stroke: var(--text);
+	stroke-width: 1.5;
+	fill: none;
+}
+.dg-svg .dg-arrow-ink-head {
+	fill: var(--text);
+}
+.dg-svg .dg-arrow-crit-line {
+	stroke: var(--dg-crit);
+	stroke-width: 1.75;
+	fill: none;
+}
+.dg-svg .dg-arrow-crit-head {
+	fill: var(--dg-crit);
+}
+.dg-svg .dg-arrow-ours-line {
+	stroke: var(--dg-ours);
+	stroke-width: 1.75;
+	fill: none;
+}
+.dg-svg .dg-arrow-ours-head {
+	fill: var(--dg-ours);
+}
+.dg-svg .dg-arrow-active-line {
+	stroke: var(--dg-active);
+	stroke-width: 1.5;
+	fill: none;
+}
+.dg-svg .dg-arrow-active-head {
+	fill: var(--dg-active);
+}
+.dg-svg .dg-arrow-faint-line {
+	stroke: var(--text-faint);
+	stroke-width: 1.25;
+	fill: none;
+}
+.dg-svg .dg-arrow-faint-head {
+	fill: var(--text-faint);
+}
+
+@media (forced-colors: active) {
+	.diagram-frame {
+		border-color: CanvasText;
+	}
+}

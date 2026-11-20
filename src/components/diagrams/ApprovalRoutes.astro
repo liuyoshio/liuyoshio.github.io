@@ -1,0 +1,180 @@
+---
+/**
+ * Approvals: three sources (a permission request relayed by the channel, a dialog only the
+ * terminal shows, the first touch of an app) become one card, with a chime and the assistant's
+ * "...Approve?", answered by click or voice. The core sends the answer back the way the
+ * question came: a channel answer; arrow keys and Enter on "Yes", never "always"; a saved
+ * app grant. Facts: the project's docs/how-it-works.md ("Approvals") and docs/protocol.md.
+ */
+import Diagram from './Diagram.astro';
+import { NARROW, WIDE, arrow, el, g, line, rect, svg, text, wrap } from './svg';
+import { PAD, drawBlock, layoutBlock, mic } from './operator';
+import './operator.css';
+
+interface Props {
+	caption?: string;
+	wide?: boolean;
+}
+
+const {
+	caption = 'Three sources, one card. Whatever asks, you get the same card with the same chime, and you answer it the same way, by click or by voice. The core sends the answer back the way the question came, and Approve always means “yes, this once”.',
+	wide = false,
+} = Astro.props;
+
+const routes = [
+	{
+		tag: 'Relay',
+		from: 'Claude Code asks to use a tool, and the channel relays the request.',
+		fromN: 'Claude Code asks to use a tool; the channel relays it',
+		back: 'Allow, sent back through the channel.',
+		backN: 'allow, sent back through the channel',
+	},
+	{
+		tag: 'Terminal',
+		from: 'A dialog only the terminal shows, such as the startup warning, read from the tmux pane.',
+		fromN: 'a dialog only the terminal shows, read from the pane',
+		back: 'Arrow keys to the option that is exactly “Yes”, never “always”. Enter only after a fresh read of the pane.',
+		backN: 'arrow keys to “Yes”, never “always”, then Enter',
+	},
+	{
+		tag: 'Core',
+		from: 'The hands touch an app for the first time: “Allow controlling Notes?”',
+		fromN: 'the hands touch an app for the first time',
+		back: 'Saved as the app’s grant, and the waiting step goes on.',
+		backN: 'saved as the app’s grant; the step goes on',
+	},
+];
+
+/** A small speaker with two sound waves, for the chime; (x, cy) is its left middle. */
+function speaker(x: number, cy: number): string {
+	return el('path', {
+		d: `M${x} ${cy - 2.5}h3l4-3.5v12l-4-3.5h-3ZM${x + 10} ${cy - 3}a4.5 4.5 0 0 1 0 6M${x + 12.5} ${cy - 6}a8.5 8.5 0 0 1 0 12`,
+		class: 's-muted',
+		'stroke-linejoin': 'round',
+		'stroke-linecap': 'round',
+	});
+}
+
+/** The one card, in the overlay's glass: question, detail, the voice hint, two buttons. */
+function card(x: number, y: number, w: number): { m: string; h: number } {
+	const p = 12;
+	const tl = wrap('The question, in plain words', w - 2 * p, 13, { bold: true });
+	const dl = wrap('and its detail; never the numbered options', w - 2 * p);
+	const out: string[] = [];
+	let yy = y + p + 11;
+	const body: string[] = [];
+	body.push(text(x + p, yy, tl, { cls: 'dg-t dg-b op-gt', lh: 16 }));
+	yy += (tl.length - 1) * 16 + 17;
+	body.push(text(x + p, yy, dl, { cls: 'dg-s op-gs', lh: 15 }));
+	yy += (dl.length - 1) * 15 + 13;
+	body.push(line(x + p, yy, x + w - p, yy, 'op-glass-line'));
+	yy += 18;
+	body.push(mic(x + p + 6, yy - 4.5));
+	body.push(text(x + p + 17, yy, 'Say “yes, I approve”', { cls: 'dg-s op-gs' }));
+	yy += 12;
+	body.push(rect(x + p, yy, 74, 24, 'op-btn', { rx: 12 }));
+	body.push(text(x + p + 37, yy + 16.5, 'Approve', { cls: 'dg-s op-btn-t', anchor: 'middle' }));
+	body.push(rect(x + p + 80, yy, 70, 24, 'op-btn-2', { rx: 12 }));
+	body.push(text(x + p + 115, yy + 16.5, 'Decline', { cls: 'dg-s op-gt', anchor: 'middle' }));
+	yy += 24 + p;
+	out.push(rect(x, y, w, yy - y, 'op-glass', { rx: 12 }), ...body);
+	return { m: out.join(''), h: yy - y };
+}
+
+/** The card's group: the chime and the assistant's question, then the card, centred as one. */
+function group(x: number, y: number, w: number, h: number | undefined): { m: string; h: number } {
+	const hl = wrap('A chime, and the assistant asks “…Approve?”', w - 2 * PAD - 22);
+	const headH = 12 + (hl.length - 1) * 15 + 12;
+	const cw = Math.min(w - 2 * PAD, 280);
+	const probe = card(0, 0, cw);
+	const need = PAD + headH + probe.h + PAD;
+	const H = Math.max(need, h ?? 0);
+	const top = y + (H - need) / 2 + PAD;
+	const c = card(x + (w - cw) / 2, top + headH, cw);
+	return {
+		m:
+			rect(x, y, w, H, 'f-box-soft', { rx: 8 }) +
+			speaker(x + PAD, top + 7.5) +
+			text(x + PAD + 22, top + 12, hl, { cls: 'dg-s', lh: 15 }) +
+			c.m,
+		h: H,
+	};
+}
+
+function build(W: number): string {
+	const narrow = W < 500;
+	const M = narrow ? 10 : 12;
+	const inner = W - 2 * M;
+	const parts: string[] = [];
+	let y = 8;
+
+	if (!narrow) {
+		// three columns: where it comes from | one card | how the answer goes back
+		const sideW = 180;
+		const midX = M + sideW + 30;
+		const midW = inner - 2 * sideW - 60;
+		const rightX = W - M - sideW;
+		parts.push(text(M, y + 13, 'Where it comes from', { cls: 'dg-s dg-b' }));
+		parts.push(text(midX, y + 13, 'One card', { cls: 'dg-s dg-b' }));
+		parts.push(text(rightX, y + 13, 'How the answer goes back', { cls: 'dg-s dg-b' }));
+		y += 24;
+		const from = routes.map((r) => layoutBlock(sideW, r.tag, r.from));
+		const back = routes.map((r) => layoutBlock(sideW, r.tag, r.back));
+		const rowH = routes.map((_, i) => Math.max(from[i].h, back[i].h));
+		const rowsH = rowH.reduce((a, b) => a + b, 0);
+		const probe = group(0, 0, midW, undefined);
+		const gap = Math.max(14, (probe.h - rowsH) / 2);
+		const totalH = rowsH + 2 * gap;
+		parts.push(group(midX, y, midW, totalH).m);
+		let ry = y;
+		routes.forEach((_, i) => {
+			parts.push(drawBlock(M, ry, from[i], { h: rowH[i] }));
+			parts.push(drawBlock(rightX, ry, back[i], { h: rowH[i] }));
+			const my = ry + rowH[i] / 2;
+			parts.push(arrow(M + sideW + 3, my, midX - 3, my));
+			parts.push(arrow(midX + midW + 3, my, rightX - 3, my));
+			ry += rowH[i] + gap;
+		});
+		y += totalH;
+	} else {
+		// the same, turned: sources on top, the card, the routes back below
+		const gapX = 9;
+		const colW = (inner - 2 * gapX) / 3;
+		const colX = (i: number) => M + i * (colW + gapX);
+		const from = routes.map((r) => layoutBlock(colW, r.tag, r.fromN, { pad: 8 }));
+		const back = routes.map((r) => layoutBlock(colW, r.tag, r.backN, { pad: 8 }));
+		const fromH = Math.max(...from.map((b) => b.h));
+		const backH = Math.max(...back.map((b) => b.h));
+		parts.push(text(M, y + 13, 'Where the question comes from', { cls: 'dg-s dg-b' }));
+		y += 22;
+		from.forEach((b, i) => parts.push(drawBlock(colX(i), y, b, { h: fromH })));
+		y += fromH;
+		const gTop = y + 26;
+		routes.forEach((_, i) => parts.push(arrow(colX(i) + colW / 2, y + 3, colX(i) + colW / 2, gTop - 3)));
+		const gr = group(M, gTop, inner, undefined);
+		parts.push(gr.m);
+		y = gTop + gr.h;
+		const bTop = y + 26;
+		routes.forEach((_, i) => parts.push(arrow(colX(i) + colW / 2, y + 3, colX(i) + colW / 2, bTop - 3)));
+		back.forEach((b, i) => parts.push(drawBlock(colX(i), bTop, b, { h: backH })));
+		y = bTop + backH;
+	}
+	y += 8;
+
+	return svg({
+		w: W,
+		h: y,
+		title: 'Three approval sources, one card, three ways back',
+		desc: 'Three things can ask for your OK. Relay: Claude Code asks to use a tool, and the channel relays the request. Terminal: a dialog only the terminal shows, such as the startup warning, read from the tmux pane. Core: the hands touch an app for the first time, as in Allow controlling Notes? All three become the same card: a chime, the assistant asks “…Approve?”, and the card shows the question and its detail (never the numbered options), the hint Say “yes, I approve”, and Approve and Decline buttons. You answer by click or by voice. The answer goes back the way the question came: through the channel for a relayed request; for a terminal dialog, arrow keys to the option that is exactly “Yes”, never “always”, and Enter only after a fresh read of the pane; for the core, it is saved as the app’s grant and the waiting step goes on.',
+		body: g(parts),
+	});
+}
+
+const wideSvg = build(WIDE);
+const narrowSvg = build(NARROW);
+---
+
+<Diagram caption={caption} wide={wide}>
+	<Fragment set:html={wideSvg} />
+	<Fragment slot="narrow" set:html={narrowSvg} />
+</Diagram>

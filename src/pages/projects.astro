@@ -1,0 +1,44 @@
+---
+import ProjectCard from '../components/ProjectCard.astro';
+import { projects } from '../data/projects';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getPosts, postUrl } from '../lib/posts';
+
+// Link a project's write-up only when that post is published in this build.
+const published = new Set((await getPosts()).map((post) => post.id));
+---
+
+<BaseLayout title="Projects" description="Things I have built, with write-ups and code.">
+	<div class="container">
+		<header class="page-header">
+			<h1 class="page-title">Projects</h1>
+			<p class="page-lede">Things I have built or helped build, with write-ups and code.</p>
+		</header>
+
+		<ul class="projects">
+			{
+				projects.map((project) => (
+					<li>
+						<ProjectCard
+							project={project}
+							postHref={
+								project.post && published.has(project.post) ? postUrl(project.post) : undefined
+							}
+							headingLevel={2}
+						/>
+					</li>
+				))
+			}
+		</ul>
+	</div>
+</BaseLayout>
+
+<style>
+	.projects {
+		display: grid;
+		gap: 1rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+</style>

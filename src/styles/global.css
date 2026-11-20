@@ -1,0 +1,354 @@
+/*
+  Site-wide tokens and base styles. Long-form post typography lives in prose.css.
+
+  Theming: light tokens are the default. Dark tokens apply when the OS prefers dark
+  (unless the reader picked light with the toggle) or when the reader picked dark.
+  The inline script in BaseHead.astro sets <html data-theme> before first paint.
+*/
+
+:root {
+	color-scheme: light;
+
+	--bg: #fcfbf8;
+	--bg-subtle: #f4f2ed;
+	--text: #1d2025;
+	--text-muted: #5a5f69;
+	--text-faint: #6b7079;
+	--border: #e4e1d9;
+	--border-strong: #d3cfc4;
+	--accent: #12698a;
+	--accent-strong: #0b5873;
+	--accent-soft: #e3eff3;
+	--selection: rgb(18 105 138 / 0.18);
+	--shadow: 0 1px 2px rgb(29 32 37 / 0.04), 0 4px 16px rgb(29 32 37 / 0.05);
+
+	--code-inline-bg: #efece5;
+	--code-bg: #ffffff;
+	--code-header-bg: #f6f8fa;
+	--code-border: #d8dee4;
+
+	--note: #12698a;
+	--note-bg: #eef5f7;
+	--tip: #276b43;
+	--tip-bg: #eef6f0;
+	--warning: #845400;
+	--warning-bg: #fbf4e4;
+
+	/* Layout */
+	--gutter: 1rem;
+	--narrow: 44rem; /* lists, about, projects; close to the post text measure */
+	--wide: 76rem; /* post pages with a side table of contents */
+	--page-width: var(--narrow);
+	--radius: 8px;
+
+	/* Type: the font variables come from Astro's fonts API (<Font /> in BaseHead). */
+	--sans: var(--font-sans), system-ui, sans-serif;
+	--serif: var(--font-serif), Georgia, serif;
+	--mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		color-scheme: dark;
+
+		--bg: #141619;
+		--bg-subtle: #1b1e22;
+		--text: #e4e2dd;
+		--text-muted: #a2a6ad;
+		--text-faint: #8f949c;
+		--border: #2a2e34;
+		--border-strong: #3a3f46;
+		--accent: #6cc0dd;
+		--accent-strong: #93d3ea;
+		--accent-soft: #1b2c33;
+		--selection: rgb(108 192 221 / 0.25);
+		--shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 16px rgb(0 0 0 / 0.25);
+
+		--code-inline-bg: #23262b;
+		--code-bg: #0d1117;
+		--code-header-bg: #161b22;
+		--code-border: #30363d;
+
+		--note: #6cc0dd;
+		--note-bg: #172227;
+		--tip: #6fcf97;
+		--tip-bg: #16231b;
+		--warning: #e3b341;
+		--warning-bg: #2a2316;
+	}
+}
+
+:root[data-theme='dark'] {
+	color-scheme: dark;
+
+	--bg: #141619;
+	--bg-subtle: #1b1e22;
+	--text: #e4e2dd;
+	--text-muted: #a2a6ad;
+	--text-faint: #8f949c;
+	--border: #2a2e34;
+	--border-strong: #3a3f46;
+	--accent: #6cc0dd;
+	--accent-strong: #93d3ea;
+	--accent-soft: #1b2c33;
+	--selection: rgb(108 192 221 / 0.25);
+	--shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 16px rgb(0 0 0 / 0.25);
+
+	--code-inline-bg: #23262b;
+	--code-bg: #0d1117;
+	--code-header-bg: #161b22;
+	--code-border: #30363d;
+
+	--note: #6cc0dd;
+	--note-bg: #172227;
+	--tip: #6fcf97;
+	--tip-bg: #16231b;
+	--warning: #e3b341;
+	--warning-bg: #2a2316;
+}
+
+/* ---------- Base ---------- */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+	scrollbar-gutter: stable;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	html {
+		scroll-behavior: smooth;
+	}
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	background: var(--bg);
+	color: var(--text);
+	font-family: var(--sans);
+	font-size: 1rem;
+	line-height: 1.6;
+	font-optical-sizing: auto;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overflow-wrap: break-word;
+}
+
+body[data-layout='post'] {
+	--page-width: var(--narrow);
+}
+
+@media (min-width: 72rem) {
+	body[data-layout='post'] {
+		--page-width: var(--wide);
+	}
+}
+
+::selection {
+	background: var(--selection);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin: 0;
+	font-family: var(--sans);
+	line-height: 1.25;
+	font-weight: 650;
+	letter-spacing: -0.012em;
+	text-wrap: balance;
+}
+
+p {
+	margin: 0;
+}
+
+a {
+	color: var(--accent);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.18em;
+}
+
+a:hover {
+	color: var(--accent-strong);
+	text-decoration-thickness: 2px;
+}
+
+img,
+svg,
+video {
+	max-width: 100%;
+}
+
+img {
+	height: auto;
+}
+
+code,
+kbd,
+pre,
+samp {
+	font-family: var(--mono);
+	font-size: 0.9em;
+}
+
+hr {
+	border: 0;
+	border-top: 1px solid var(--border);
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+}
+
+/* ---------- Layout ---------- */
+
+.container {
+	width: 100%;
+	max-width: calc(var(--page-width) + 2 * var(--gutter));
+	margin-inline: auto;
+	padding-inline: var(--gutter);
+}
+
+main {
+	flex: 1;
+	padding-block: 2.5rem 4rem;
+}
+
+@media (min-width: 48rem) {
+	:root {
+		--gutter: 1.5rem;
+	}
+	main {
+		padding-block: 3.5rem 5rem;
+	}
+}
+
+.skip-link {
+	position: absolute;
+	left: var(--gutter);
+	top: 0.75rem;
+	z-index: 100;
+	padding: 0.5rem 0.875rem;
+	border-radius: var(--radius);
+	background: var(--text);
+	color: var(--bg);
+	font-weight: 600;
+	text-decoration: none;
+	transform: translateY(-200%);
+}
+
+.skip-link:focus {
+	transform: none;
+	color: var(--bg);
+}
+
+/* ---------- Shared bits ---------- */
+
+.page-header {
+	margin-bottom: 2.5rem;
+}
+
+.page-title {
+	font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.25rem);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.15;
+}
+
+.page-lede {
+	margin-top: 0.75rem;
+	color: var(--text-muted);
+	font-size: 1.0625rem;
+	max-width: 38rem;
+}
+
+.section-title {
+	font-size: 0.8125rem;
+	font-weight: 650;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.section-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1rem;
+	padding-bottom: 0.625rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.more-link {
+	font-size: 0.9375rem;
+	font-weight: 500;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.more-link:hover {
+	text-decoration: underline;
+}
+
+.meta {
+	color: var(--text-muted);
+	font-size: 0.875rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.badge {
+	display: inline-block;
+	padding: 0.05rem 0.45rem;
+	border: 1px solid var(--warning);
+	border-radius: 999px;
+	color: var(--warning);
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	vertical-align: middle;
+}
+
+.sr-only {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+@media print {
+	.site-header,
+	.site-footer,
+	.toc-side,
+	.toc-inline,
+	.code-copy {
+		display: none !important;
+	}
+}

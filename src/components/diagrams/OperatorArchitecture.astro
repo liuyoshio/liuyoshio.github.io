@@ -1,0 +1,186 @@
+---
+/**
+ * The operator's pieces: you and the overlay page (inside the Swift app) talk to OpenAI Realtime
+ * over WebRTC; the overlay and the app's primitives connect to the core over WebSockets; the core
+ * drives Claude Code in tmux through the executor adapter (channel, hooks, tmux keys); the hands
+ * act on your Mac apps. Facts: the project's docs/how-it-works.md and docs/protocol.md.
+ */
+import Diagram from './Diagram.astro';
+import { NARROW, WIDE, arrow, circle, g, measure, rect, svg, text } from './svg';
+import { PAD, biArrow, chips, drawBlock, layoutBlock } from './operator';
+import './operator.css';
+
+interface Props {
+	caption?: string;
+	wide?: boolean;
+}
+
+const {
+	caption = 'The pieces. Your voice goes to OpenAI Realtime and back over WebRTC, and Claude Code talks to Anthropic as it always does; everything else runs on your Mac. The overlay and the app’s primitives both report to the core, the only piece that decides. The core drives Claude Code in tmux through the executor adapter, and every step on screen comes back through the core as a hands call.',
+	wide = false,
+} = Astro.props;
+
+function build(W: number): string {
+	const narrow = W < 500;
+	const M = narrow ? 10 : 12;
+	const inner = W - 2 * M;
+	const parts: string[] = [];
+	let y = 8;
+
+	// ---- top row: you, OpenAI Realtime, your apps ----
+	const gapX = narrow ? 10 : 20;
+	const ws = narrow ? [80, 120, inner - 200 - 2 * gapX] : [160, 190, inner - 350 - 2 * gapX];
+	const xs = [M, M + ws[0] + gapX, M + ws[0] + ws[1] + 2 * gapX];
+	const cx = xs.map((x, i) => x + ws[i] / 2);
+	const tops = [
+		layoutBlock(ws[0], 'You', narrow ? 'talk, watch, click' : 'speak, listen, watch and click'),
+		layoutBlock(ws[1], 'OpenAI Realtime', narrow ? 'the voice model' : 'the voice assistant’s model, outside your Mac'),
+		layoutBlock(ws[2], 'Your Mac apps', narrow ? 'where the hands work' : 'the windows the hands work in'),
+	];
+	const topH = Math.max(...tops.map((t) => t.h));
+	parts.push(drawBlock(xs[0], y, tops[0], { h: topH }));
+	parts.push(drawBlock(xs[1], y, tops[1], { h: topH, box: 'f-box op-dash' }));
+	parts.push(drawBlock(xs[2], y, tops[2], { h: topH }));
+	const topBottom = y + topH;
+
+	// ---- Swift app: overlay page + primitives ----
+	const appTop = topBottom + 36;
+	const boxTop = appTop + PAD;
+	const ovX = M + PAD;
+	const ovW = xs[2] - 10 - ovX;
+	const prX = xs[2];
+	const prW = W - M - PAD - prX;
+
+	const ovL = layoutBlock(ovW, 'Overlay page', narrow ? 'full-screen, click-through' : 'a web page in a full-screen window that lets clicks through');
+	const ovItems = [{ t: narrow ? 'voice' : 'voice assistant' }, { t: 'capsule' }, { t: 'marks', cls: 'op-coral-box', dot: true }, { t: 'approval cards' }];
+	const ovChips = chips(ovX + PAD, 0, ovW - 2 * PAD, ovItems);
+	const ovH = ovL.h - PAD + 4 + ovChips.h + PAD;
+
+	const prL = narrow
+		? layoutBlock(prW, 'Primitives', 'Accessibility, screenshots, input, idle time')
+		: layoutBlock(prW, 'Primitives', 'it makes no decisions');
+	const prItems = [{ t: 'Accessibility' }, { t: 'screenshots' }, { t: 'keys and mouse' }, { t: 'idle time' }];
+	const prChips = narrow ? null : chips(prX + PAD, 0, prW - 2 * PAD, prItems);
+	const prH = prChips ? prL.h - PAD + 4 + prChips.h + PAD : prL.h;
+
+	const boxH = Math.max(ovH, prH);
+	const appTitleY = boxTop + boxH + 21;
+	const appBottom = appTitleY + 10;
+	parts.push(rect(M, appTop, inner, appBottom - appTop, 'f-box-soft', { rx: 8 }));
+	parts.push(drawBlock(ovX, boxTop, ovL, { h: boxH }));
+	parts.push(chips(ovX + PAD, boxTop + ovL.h - PAD + 4, ovW - 2 * PAD, ovItems).m);
+	parts.push(drawBlock(prX, boxTop, prL, { h: boxH }));
+	if (prChips) parts.push(chips(prX + PAD, boxTop + prL.h - PAD + 4, prW - 2 * PAD, prItems).m);
+	parts.push(
+		text(M + PAD, appTitleY, narrow ? 'Swift app' : [{ t: 'Swift app', cls: 'dg-b' }, { t: '   one process, no Dock icon', cls: 'dg-mu' }], {
+			cls: narrow ? 'dg-t dg-b' : 'dg-t',
+		}),
+	);
+
+	// connectors between the top row and the app
+	const midTop = (topBottom + boxTop) / 2;
+	parts.push(biArrow(cx[0], topBottom + 3, cx[0], boxTop - 3));
+	parts.push(biArrow(cx[1], topBottom + 3, cx[1], boxTop - 3));
+	parts.push(text(cx[1] + 9, midTop + 4.5, narrow ? 'WebRTC' : 'WebRTC, audio both ways', { cls: 'dg-s' }));
+	parts.push(arrow(cx[2], boxTop - 3, cx[2], topBottom + 3, 'op-arrow-coral', 7));
+	parts.push(text(cx[2] + 9, midTop + 4.5, 'act', { cls: 'dg-s op-ct dg-b' }));
+
+	// ---- core ----
+	const coreTop = appBottom + 44;
+	const linkOv = narrow ? 96 : 300;
+	const linkPr = prX + prW / 2;
+	for (const x of [linkOv, linkPr]) parts.push(biArrow(x, boxTop + boxH + 3, x, coreTop - 3));
+	const l1 = appBottom + 18;
+	parts.push(text(linkOv + 9, l1, 'WebSocket', { cls: 'dg-s' }));
+	parts.push(text(linkOv + 9, l1 + 15, '/ws/overlay', { cls: 'dg-m' }));
+	parts.push(text(linkPr - 9, l1, 'WebSocket', { cls: 'dg-s', anchor: 'end' }));
+	parts.push(text(linkPr - 9, l1 + 15, '/ws/app', { cls: 'dg-m', anchor: 'end' }));
+
+	const coreL = layoutBlock(
+		inner,
+		'Core',
+		narrow ? 'Node, on 127.0.0.1 only. The only piece that decides.' : 'Node, listening on 127.0.0.1 only. The only piece that decides anything.',
+	);
+	const coreChips = [
+		{ t: 'turn' },
+		{ t: 'focus' },
+		{ t: 'attention' },
+		{ t: 'cards' },
+		{ t: 'hands pipeline', cls: 'op-coral-box', dot: true },
+		{ t: 'voice keys' },
+	];
+	const cc = chips(M + PAD, coreTop + coreL.h - PAD + 4, inner - 2 * PAD, coreChips);
+	const adTop = coreTop + coreL.h - PAD + 4 + cc.h + 12;
+	const adL = layoutBlock(
+		inner - 2 * PAD,
+		'Executor adapter',
+		narrow ? 'one agent behind a small contract' : 'wraps one agent behind a small contract: Claude Code today',
+	);
+	const coreBottom = adTop + adL.h + PAD;
+	parts.push(rect(M, coreTop, inner, coreBottom - coreTop, 'f-box-soft', { rx: 8 }));
+	parts.push(drawBlock(M, coreTop, coreL, { box: '' }));
+	parts.push(cc.m);
+	parts.push(drawBlock(M + PAD, adTop, adL));
+
+	// ---- lanes: channel, hooks, tmux keys ----
+	const lanes = [
+		{
+			name: 'channel',
+			what: narrow ? 'prompts, say, hands calls, permissions' : 'prompts in; say, hands calls and permission requests out',
+			dir: 'both',
+		},
+		{ name: 'hooks', what: narrow ? 'steps, tasks, turn start and end' : 'each step and background task, turn start and end', dir: 'up' },
+		{ name: 'tmux keys', what: narrow ? 'Escape, dialog answers' : 'Escape, and answers to dialogs only the terminal shows', dir: 'down' },
+	];
+	const laneW = (inner - 2 * PAD) / 3;
+	const laneTop = coreBottom;
+	const laneLabels = lanes.map((l) => layoutBlock(laneW - (narrow ? 12 : 22), l.name, l.what, { pad: 0 }));
+	const laneH = Math.max(...laneLabels.map((l) => l.h)) + 16;
+	const clTop = laneTop + laneH;
+	lanes.forEach((l, i) => {
+		const x = M + PAD + i * laneW + (narrow ? 4 : 10);
+		const y1 = laneTop + 3;
+		const y2 = clTop - 3;
+		if (l.dir === 'both') parts.push(biArrow(x, y1, x, y2));
+		else if (l.dir === 'up') parts.push(arrow(x, y2, x, y1));
+		else parts.push(arrow(x, y1, x, y2));
+		parts.push(drawBlock(x + 8, laneTop + 6, laneLabels[i], { box: '', titleCls: 'dg-s dg-b' }));
+	});
+
+	// ---- Claude Code ----
+	const clL = layoutBlock(
+		inner,
+		'Claude Code, in tmux',
+		narrow ? 'an ordinary interactive session, with its usual tools' : 'an ordinary interactive session, with its usual tools for files, the shell and the web',
+	);
+	parts.push(drawBlock(M, clTop, clL));
+	y = clTop + clL.h;
+
+	// ---- key ----
+	y += 24;
+	const k1 = circle(M + 6, y - 4, 5, 'op-ring');
+	const t1 = narrow ? 'the hands and their marks' : 'coral: the hands, and the marks they leave on screen';
+	parts.push(k1, text(M + 18, y, t1, { cls: 'dg-s' }));
+	if (narrow) y += 20;
+	const kx = narrow ? M : M + 18 + measure(t1, 12.5) + 28;
+	parts.push(rect(kx, y - 9, 14, 10, 'f-box op-dash', { rx: 2 }));
+	parts.push(text(kx + 20, y, 'outside your Mac', { cls: 'dg-s' }));
+	y += 10;
+
+	return svg({
+		w: W,
+		h: y,
+		title: 'How the operator’s pieces connect',
+		desc: 'You speak to the overlay page, a full-screen, click-through web page inside the Swift app that runs the voice assistant, the capsule, the marks and the approval cards. The overlay talks to OpenAI Realtime, outside your Mac, over WebRTC; Claude Code talks to Anthropic as it always does. The overlay and the app’s primitives (Accessibility, screenshots, keyboard and mouse input, idle time; they make no decisions) each connect to the core over a WebSocket, /ws/overlay and /ws/app. The core, a Node process listening on 127.0.0.1 only, holds the turn, the focus, your attention, the cards, the hands pipeline and the voice keys. Its executor adapter drives Claude Code, an ordinary interactive session in tmux, through three lanes: the channel (prompts in; say, hands calls and permission requests out), hooks (steps, background tasks, turn start and end) and tmux keys (Escape, and answers to dialogs only the terminal shows). The hands act on your Mac apps through the primitives.',
+		body: g(parts),
+	});
+}
+
+const wideSvg = build(WIDE);
+const narrowSvg = build(NARROW);
+---
+
+<Diagram caption={caption} wide={wide}>
+	<Fragment set:html={wideSvg} />
+	<Fragment slot="narrow" set:html={narrowSvg} />
+</Diagram>

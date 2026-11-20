@@ -1,0 +1,148 @@
+---
+/**
+ * The voice gate (overlay/consent.js in the project): the assistant model calls answer(), and the
+ * answer is sent only if the card was on screen for at least 1 s, it is not the assistant's own
+ * voice, and the transcript of the same utterance is explicit. Any failed check sends nothing,
+ * and the assistant asks again. Facts: the project's docs/how-it-works.md ("Voice consent").
+ */
+import Diagram from './Diagram.astro';
+import { NARROW, WIDE, arrow, g, polyArrow, svg, text } from './svg';
+import { chips, drawBlock, layoutBlock } from './operator';
+import './operator.css';
+
+interface Props {
+	caption?: string;
+	wide?: boolean;
+}
+
+const {
+	caption = 'The voice gate. The voice model hears you and proposes an answer; the code decides whether it is sent. All three checks must pass. If any fails, nothing is sent and the assistant asks again. A click on Approve or Decline skips the gate.',
+	wide = false,
+} = Astro.props;
+
+const gates = [
+	{
+		title: '1 · On screen for at least 1\u00a0s?',
+		body: 'Your answer started at least 1\u00a0s after the card appeared. A “go ahead” meant for something else as the card popped up does not count.',
+		bodyN: 'Your answer started at least 1\u00a0s after the card appeared.',
+	},
+	{
+		title: '2 · Not the assistant’s own voice?',
+		body: 'An answer said over the assistant counts, unless the assistant itself was saying an approval phrase.',
+		bodyN: 'Said over the assistant, it counts, unless the assistant was saying an approval phrase.',
+	},
+	{
+		title: '3 · Explicit in the transcript?',
+		body: 'The same utterance, transcribed within 3\u00a0s: only known words, no question mark, and an approval that does not stand alone.',
+		bodyN: 'The same utterance, transcribed within 3\u00a0s: only known words, no question mark, not a lone “approve”.',
+	},
+];
+
+function build(W: number): string {
+	const narrow = W < 500;
+	const M = narrow ? 10 : 12;
+	const inner = W - 2 * M;
+	const railW = narrow ? 80 : 188;
+	const colGap = narrow ? 24 : 40;
+	const colW = inner - railW - colGap;
+	const railX = M + colW + colGap;
+	const parts: string[] = [];
+	let y = 8;
+	const step = 30; // room for the "yes" arrows between blocks
+
+	// ---- the assistant proposes ----
+	const startL = layoutBlock(
+		colW,
+		'The assistant calls answer()',
+		narrow ? 'It heard an answer to the card in your audio.' : 'The voice model heard an answer to the card in your audio, and proposes it.',
+	);
+	parts.push(drawBlock(M, y, startL));
+	const startMid = y + startL.h / 2;
+	y += startL.h;
+
+	// ---- three checks ----
+	const gateMids: number[] = [];
+	let firstGateTop = 0;
+	gates.forEach((gt, i) => {
+		const top = y + step;
+		parts.push(arrow(M + 40, y + 3, M + 40, top - 3));
+		if (i > 0) parts.push(text(M + 48, y + step / 2 + 4.5, 'yes', { cls: 'dg-s' }));
+		const L = layoutBlock(colW, gt.title, narrow ? gt.bodyN : gt.body);
+		parts.push(drawBlock(M, top, L, { box: 'f-box' }));
+		if (i === 0) firstGateTop = top;
+		gateMids.push(top + 22);
+		y = top + L.h;
+	});
+	const lastGateBottom = y;
+
+	// ---- sent ----
+	const sentTop = y + step;
+	parts.push(arrow(M + 40, y + 3, M + 40, sentTop - 3, 'dg-arrow-ours'));
+	parts.push(text(M + 48, y + step / 2 + 4.5, 'yes', { cls: 'dg-s' }));
+	const sentL = layoutBlock(colW, 'The answer is sent', narrow ? 'to the core, as a voiced answer' : 'to the core, which routes it back to whatever asked');
+	parts.push(drawBlock(M, sentTop, sentL, { box: 'op-ok-box' }));
+	y = sentTop + sentL.h;
+
+	// ---- the rail: nothing is sent, ask again ----
+	const railTop = firstGateTop;
+	const railL = layoutBlock(
+		railW,
+		'Nothing is sent',
+		narrow ? 'The assistant asks again.' : 'The card shows “Not a clear yes” with what was heard, and the assistant asks again.',
+	);
+	const railH = Math.max(railL.h, lastGateBottom - railTop);
+	parts.push(drawBlock(railX, railTop, railL, { h: railH, box: 'op-crit-box' }));
+	for (const my of gateMids) {
+		parts.push(arrow(M + colW + 3, my, railX - 3, my, 'dg-arrow-crit'));
+		parts.push(text(M + colW + colGap / 2, my - 6, 'no', { cls: 'dg-s', anchor: 'middle' }));
+	}
+	// ask again: back to the assistant
+	const backX = railX + railW / 2;
+	parts.push(polyArrow([[backX, railTop - 3], [backX, startMid], [M + colW + 3, startMid]], 'dg-arrow-crit'));
+	if (narrow) parts.push(text(backX - 7, (startMid + railTop) / 2 - 3, ['ask', 'again'], { cls: 'dg-s', anchor: 'end', lh: 14 }));
+	else parts.push(text(backX + 8, (startMid + railTop) / 2 + 4.5, 'ask again', { cls: 'dg-s' }));
+
+	// ---- what the transcript check makes of a few utterances ----
+	y = Math.max(y, railTop + railH) + 26;
+	parts.push(text(M, y, 'What check 3 makes of a transcript', { cls: 'dg-s dg-b' }));
+	y += 10;
+	const groups = [
+		{ label: 'a yes', cls: 'op-ok-box', items: ['yes, I approve', 'OK, do it', 'approved, do it', 'I approve'] },
+		{ label: 'a no', cls: 'f-box', items: ['no', 'cancel', "don't"] },
+		{ label: 'neither: ask again', cls: 'op-crit-box', items: ['ok', 'go ahead', 'sure', 'wait', 'approve?', 'hold on'] },
+	];
+	const labelW = narrow ? 0 : 118;
+	for (const gr of groups) {
+		if (narrow) {
+			y += 24;
+			parts.push(text(M, y, gr.label, { cls: 'dg-s' }));
+			y += 5;
+		} else parts.push(text(M, y + 25.5, gr.label, { cls: 'dg-s' }));
+		const c = chips(
+			M + labelW,
+			y + 10,
+			inner - labelW,
+			gr.items.map((t) => ({ t: `“${t}”`, cls: gr.cls, tcls: 'dg-s op-ink' })),
+		);
+		parts.push(c.m);
+		y += 10 + c.h;
+	}
+	y += 10;
+
+	return svg({
+		w: W,
+		h: y,
+		title: 'The voice gate for approvals',
+		desc: 'The assistant, the voice model, calls answer() when it heard an answer to the card in your audio. Three checks follow, and all must pass. 1: your answer started at least 1 second after the card appeared. 2: it is not the assistant’s own voice; an answer said over the assistant counts unless the assistant itself was saying an approval phrase. 3: the transcript of the same utterance, within 3 seconds, is explicit: only known words, no question mark, and an approval that does not stand alone. If all pass, the answer is sent to the core. If any fails, nothing is sent, the card shows Not a clear yes with what was heard, and the assistant asks again. Examples for check 3: yes, I approve; OK, do it; approved, do it; I approve count as a yes. No, cancel and don’t count as a no. Ok, go ahead, sure, wait, approve? and hold on count as neither, and the assistant asks again.',
+		body: g(parts),
+	});
+}
+
+const wideSvg = build(WIDE);
+const narrowSvg = build(NARROW);
+---
+
+<Diagram caption={caption} wide={wide}>
+	<Fragment set:html={wideSvg} />
+	<Fragment slot="narrow" set:html={narrowSvg} />
+</Diagram>

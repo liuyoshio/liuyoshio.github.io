@@ -1,0 +1,189 @@
+---
+title: 'Lookma: an AI that uses your Mac while you watch'
+description: 'Lookma lets you talk to your Mac and watch it work. An AI uses your real apps on your own screen, shows you every step, and waits for your yes.'
+pubDate: 2026-11-20
+heroImage: '../../assets/blog/introducing-lookma/social.png'
+tags: ['Lookma', 'agents', 'computer use', 'macOS', 'voice', 'open source']
+draft: false
+---
+
+export const NAME = 'Lookma';
+export const REPO_URL = 'https://github.com/liuyoshio/lookma';
+
+{/* Post art lives in src/assets/blog/introducing-lookma/ as <name>.svg plus an optional
+    <name>-dark.svg. art() shows it with a plain <img> so the CSS animation inside the SVG runs. */}
+
+export const artUrls = import.meta.glob('../../assets/blog/introducing-lookma/*.svg', {
+	eager: true,
+	query: '?url',
+	import: 'default',
+});
+
+export const artUrl = (name) => artUrls[`../../assets/blog/introducing-lookma/${name}.svg`];
+
+export const art = ({ name, alt, wide = false, small = false }) => {
+	const light = artUrl(name);
+	const dark = artUrl(`${name}-dark`) ?? light;
+	return (
+		light && (
+			<figure class={`figure lm-art${wide ? ' figure--wide' : ''}${small ? ' lm-art--small' : ''}`}>
+				<img class="lm-light" src={light} alt={alt} loading="lazy" decoding="async" />
+				<img class="lm-dark" src={dark} alt={alt} loading="lazy" decoding="async" />
+			</figure>
+		)
+	);
+};
+
+<style>{`
+	.prose .lm-lede { font-size: 1.2em; line-height: 1.5; }
+	.lm-art img { width: 100%; height: auto; }
+	.prose .lm-art--small { max-width: 16rem; margin-inline: auto; }
+	.lm-art .lm-dark { display: none; }
+	:root[data-theme='dark'] .lm-art .lm-light { display: none; }
+	:root[data-theme='dark'] .lm-art .lm-dark { display: block; }
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) .lm-art .lm-light { display: none; }
+		:root:not([data-theme='light']) .lm-art .lm-dark { display: block; }
+	}
+`}</style>
+
+<p class="lm-lede">
+	Just say what you want. {NAME} does it in your real apps,
+	right on your screen, while you watch. Anything risky waits for your yes.
+</p>
+
+{art({
+	name: 'bike', wide: true,
+	alt: "A person on a stationary bike says 'Hey Lookma, visualize this data for me', and Lookma builds a chart on the living-room TV while they keep pedaling.",
+})}
+
+<p class="lm-lede" style="text-align:center;font-size:.9em;opacity:.75">Talk to it from across the room.</p>
+
+## Why I built it
+
+I wanted to ride my exercise bike, look up at the TV, and just tell my computer what to do, then watch it happen.
+So there is no key to press. While {NAME} runs it listens, and you talk to it from across the room. Pause it
+from the menu bar when you want quiet.
+
+## What it is
+
+{art({
+	name: 'demo', wide: true,
+	alt: "Animated demo: a spoken request appears as a caption, a coral ring and a ghost cursor move across two apps on a Mac desktop, an approval card pops up and is approved by voice, and the task finishes.",
+})}
+
+{NAME} is a free, open-source app for your Mac. You talk, and an AI does the clicking and typing
+in the apps you already use.
+
+The point is that it works where you can see it. Not in a hidden browser in the cloud. Not in a
+background window you never see. Right in front of you, where you can say "stop".
+
+Yesterday I said "find three sushi places near the Ferry Building and put them in a new note",
+and took my hands off the keyboard. Maps opened. A search ran. A note appeared with three names
+in it. I watched every step.
+
+## Three things that make it different
+
+### You see every step
+
+{art({
+	name: 'feature-see',
+	alt: "A coral ring and a ghost cursor land on a button a moment before it is clicked, with a caption naming the step.",
+})}
+
+Before {NAME} touches anything, a coral ring and a ghost cursor land on the exact spot. They
+arrive a beat early, so your eye gets there first.
+
+A caption says what the step is. Another shows what it heard you say, so if it misheard, you know
+at once.
+
+### You say yes out loud
+
+{art({
+	name: 'feature-say',
+	alt: "An approval card on screen, and a speech bubble saying yes, I approve.",
+})}
+
+Anything risky stops and asks. A card pops up with a soft chime. Click it, or say "yes, I
+approve" from across the room.
+
+It is picky about that yes. "Ok" doesn't count. "Maybe" doesn't count. A mumble doesn't count. In
+169 test cases it never mistook a "wait" for a "yes".
+
+{NAME} doesn't take "ok" for an answer.
+
+### It steps aside
+
+{art({
+	name: 'feature-aside',
+	alt: "A person typing in one window while the ring waits politely at the edge of the screen.",
+})}
+
+You and {NAME} share one screen, one cursor and one keyboard. So while you type, it backs off. It
+never grabs the window you're working in.
+
+When you pause, or say "go ahead", it carries on. It feels like sharing a computer, not lending
+one out.
+
+## Meet Hands 🦭
+
+{art({
+	name: 'seal', small: true,
+	alt: "Hands, a small coral seal, balancing a coral ring on its nose.",
+})}
+
+This is Hands, a small coral seal. It's called Hands because it doesn't have any. So "Look ma, no hands" is less a slogan than a
+plain statement of fact.
+
+It balances the coral ring on its nose. Wherever the ring lands is the thing it is about to
+touch.
+
+It loves an audience and has strict manners. Its one rule: **no approval, no seal.**
+
+## Try it
+
+You need a Mac on macOS 15 or later, Node 20 or later, tmux, and Claude Code, logged in.
+`lookma doctor` checks for everything else.
+
+```sh
+git clone https://github.com/liuyoshio/lookma
+cd lookma
+npm install && npm link
+# check that everything it needs is in place
+lookma doctor
+# start it, with the folders it may work in
+lookma ~/Projects
+```
+
+Voice needs an OpenAI key: copy `.env.example` to `.env` and set `OPENAI_API_KEY`. Typing works
+without one. It is MIT licensed.
+
+Then two small asks. <a href={REPO_URL}>Star the repo</a> if you like the idea. And record Hands
+doing one small chore on your Mac, and post the clip with 🦭🙌. The best demos of this thing won't
+be mine.
+
+## What it can't do yet
+
+This is early, and I'd rather you hear it from me.
+
+- Mac only, and only your main display.
+- No dragging and no right-click yet.
+- It's not fast. A task with a few steps takes 10 to 20 seconds.
+- It runs on your Mac, with no account and no tracking. With voice on, it listens while it runs, and your audio goes to OpenAI. Pause it from the menu bar.
+- It can be wrong, and it is using your real computer. Start with small things.
+
+Watch it on anything that matters. Watching is the whole idea.
+
+## What's next
+
+Next: Codex as a second agent, more voices, and an offline voice that never leaves your Mac. And for when
+you'd rather it not listen all the time, push-to-talk and an on-device "Hey Lookma" wake word, as options.
+
+## How it works
+
+Curious what's inside, and which bugs bit hardest? The long version is in
+[{NAME} under the hood](/blog/lookma-under-the-hood/).
+
+Look ma, no hands.
+
+P.S. Hands wanted to sign off on this post. It couldn't hold the pen, so I approved it out loud.

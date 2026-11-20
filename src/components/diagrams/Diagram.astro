@@ -1,0 +1,36 @@
+---
+/**
+ * Shared wrapper for the inline-SVG diagrams and charts in this folder.
+ *
+ *   <Diagram caption="..." wide>
+ *     <Fragment set:html={wideSvg} />
+ *     <Fragment slot="narrow" set:html={narrowSvg} />
+ *   </Diagram>
+ *
+ * - Looks like a post figure: a bordered, rounded frame and a centred muted caption. It uses
+ *   the figure classes (`figure`, `figure--wide`), so prose.css gives it the same margins and
+ *   the same wide breakout on desktop.
+ * - Legibility: when a narrow drawing is passed, it replaces the default one below 600px of
+ *   figure width (a container query, no JS). Each <svg> caps how far it scales up and sets a
+ *   min-width; below that min-width the frame scrolls horizontally instead of shrinking text
+ *   under about 11px.
+ * - Theme: series colours are scoped CSS variables in diagrams.css, for light and dark.
+ */
+import './diagrams.css';
+
+interface Props {
+	caption?: string;
+	wide?: boolean;
+}
+
+const { caption, wide = false } = Astro.props;
+const dual = Astro.slots.has('narrow');
+---
+
+<figure class:list={['figure', 'diagram', { 'figure--wide': wide, 'diagram--dual': dual }]}>
+	<div class="diagram-frame">
+		<div class="diagram-view diagram-view--main"><slot /></div>
+		{dual && <div class="diagram-view diagram-view--narrow"><slot name="narrow" /></div>}
+	</div>
+	{caption && <figcaption>{caption}</figcaption>}
+</figure>

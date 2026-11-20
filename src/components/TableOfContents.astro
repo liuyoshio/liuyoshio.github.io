@@ -1,0 +1,157 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+	/** h2/h3 headings from render(entry). */
+	headings: MarkdownHeading[];
+	/** 'side': sticky column on wide screens. 'inline': collapsible block on narrow screens. */
+	variant: 'side' | 'inline';
+}
+
+const { headings, variant } = Astro.props;
+
+interface Item {
+	heading: MarkdownHeading;
+	children: MarkdownHeading[];
+}
+
+// Nest h3s under the preceding h2 (an h3 before any h2 becomes a top-level item).
+const items: Item[] = [];
+for (const heading of headings) {
+	const parent = items.at(-1);
+	if (heading.depth > 2 && parent) parent.children.push(heading);
+	else items.push({ heading, children: [] });
+}
+---
+
+{
+	variant === 'inline' ? (
+		<details class="toc toc-inline">
+			<summary>Contents</summary>
+			<nav aria-label="Table of contents">
+				<ol>
+					{items.map(({ heading, children }) => (
+						<li>
+							<a href={`#${heading.slug}`}>{heading.text}</a>
+							{children.length > 0 && (
+								<ol>
+									{children.map((child) => (
+										<li>
+											<a href={`#${child.slug}`}>{child.text}</a>
+										</li>
+									))}
+								</ol>
+							)}
+						</li>
+					))}
+				</ol>
+			</nav>
+		</details>
+	) : (
+		<nav class="toc toc-side" aria-label="Table of contents">
+			<p class="toc-title">On this page</p>
+			<ol>
+				{items.map(({ heading, children }) => (
+					<li>
+						<a href={`#${heading.slug}`}>{heading.text}</a>
+						{children.length > 0 && (
+							<ol>
+								{children.map((child) => (
+									<li>
+										<a href={`#${child.slug}`}>{child.text}</a>
+									</li>
+								))}
+							</ol>
+						)}
+					</li>
+				))}
+			</ol>
+		</nav>
+	)
+}
+
+<style>
+	.toc {
+		font-family: var(--sans);
+		font-size: 0.875rem;
+		line-height: 1.45;
+	}
+
+	.toc ol {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.toc li {
+		margin: 0;
+	}
+
+	.toc a {
+		display: block;
+		padding: 0.3rem 0 0.3rem 0.75rem;
+		border-left: 2px solid transparent;
+		color: var(--text-muted);
+		text-decoration: none;
+	}
+
+	.toc ol ol a {
+		padding-left: 1.5rem;
+		font-size: 0.8125rem;
+	}
+
+	.toc a:hover {
+		color: var(--text);
+	}
+
+	/* Links fill the width of the scrolling side column, which would clip an outer ring. */
+	.toc a:focus-visible {
+		outline-offset: -2px;
+	}
+
+	.toc a[aria-current='true'] {
+		border-left-color: var(--accent);
+		color: var(--text);
+		font-weight: 550;
+	}
+
+	/* Side column */
+	.toc-side > ol {
+		border-left: 1px solid var(--border);
+	}
+
+	.toc-side a {
+		margin-left: -1px;
+	}
+
+	.toc-title {
+		margin: 0 0 0.625rem;
+		color: var(--text-muted);
+		font-size: 0.75rem;
+		font-weight: 650;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	/* Inline (narrow screens) */
+	.toc-inline {
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--bg-subtle);
+	}
+
+	.toc-inline summary {
+		padding: 0.7rem 1rem;
+		color: var(--text);
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.toc-inline summary:focus-visible {
+		outline-offset: -2px;
+	}
+
+	.toc-inline nav {
+		padding: 0 1rem 0.75rem 0.25rem;
+	}
+</style>

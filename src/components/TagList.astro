@@ -1,0 +1,52 @@
+---
+import { tagUrl } from '../lib/posts';
+
+interface Props {
+	tags: string[];
+	/** Link each tag to its /tags/<slug>/ page (default) or render plain labels. */
+	link?: boolean;
+	class?: string;
+}
+
+const { tags, link = true, class: className } = Astro.props;
+---
+
+{
+	tags.length > 0 && (
+		<ul class:list={['tag-list', className]} aria-label="Tags">
+			{tags.map((tag) => (
+				<li>{link ? <a href={tagUrl(tag)}>{tag}</a> : <span>{tag}</span>}</li>
+			))}
+		</ul>
+	)
+}
+
+<style>
+	.tag-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.375rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		font-family: var(--sans);
+	}
+
+	.tag-list a,
+	.tag-list span {
+		display: inline-block;
+		padding: 0.125rem 0.55rem;
+		border-radius: 999px;
+		background: var(--accent-soft);
+		color: var(--accent);
+		font-size: 0.8125rem;
+		font-weight: 500;
+		line-height: 1.5;
+		text-decoration: none;
+	}
+
+	.tag-list a:hover {
+		color: var(--accent-strong);
+		text-decoration: underline;
+	}
+</style>

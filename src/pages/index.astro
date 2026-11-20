@@ -1,0 +1,110 @@
+---
+import PostList from '../components/PostList.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import { projects } from '../data/projects';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getPosts, postUrl } from '../lib/posts';
+
+const posts = await getPosts();
+const recent = posts.slice(0, 5);
+const published = new Set(posts.map((post) => post.id));
+const featured = projects.filter((project) => project.featured);
+---
+
+<BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
+	<div class="container">
+		<section class="intro" aria-labelledby="intro-title">
+			<h1 id="intro-title" class="page-title">Hi, I'm Jiawei.</h1>
+			<p>
+				I like making the computer do more of the work. Mostly that means building things,
+				breaking them, and writing down what I learned along the way.
+			</p>
+			<p>
+				Right now that's <a href="/blog/introducing-lookma/">Lookma</a>, an open-source app that
+				lets you talk to your Mac and watch an AI use your real apps. Before that I worked on LLM
+				serving: fitting many agents onto one small GPU with llama.cpp.
+			</p>
+			<p>
+				The write-ups live here, with enough detail that you can try things yourself.
+			</p>
+		</section>
+
+		<section class="section" aria-labelledby="recent-title">
+			<div class="section-head">
+				<h2 id="recent-title" class="section-title">Recent posts</h2>
+				{posts.length > 0 && <a class="more-link" href="/blog/">All posts →</a>}
+			</div>
+			{
+				recent.length > 0 ? (
+					<PostList posts={recent} headingLevel={3} />
+				) : (
+					<p class="empty">The first post is on its way.</p>
+				)
+			}
+		</section>
+
+		{
+			featured.length > 0 && (
+				<section class="section" aria-labelledby="projects-title">
+					<div class="section-head">
+						<h2 id="projects-title" class="section-title">Projects</h2>
+						<a class="more-link" href="/projects/">
+							All projects →
+						</a>
+					</div>
+					<ul class="project-strip">
+						{featured.map((project) => (
+							<li>
+								<ProjectCard
+									project={project}
+									postHref={
+										project.post && published.has(project.post) ? postUrl(project.post) : undefined
+									}
+									headingLevel={3}
+								/>
+							</li>
+						))}
+					</ul>
+				</section>
+			)
+		}
+	</div>
+</BaseLayout>
+
+<style>
+	.intro {
+		margin-bottom: 3.5rem;
+	}
+
+	.intro p {
+		margin-top: 1rem;
+		max-width: 38rem;
+		color: var(--text-muted);
+		font-size: 1.0625rem;
+		line-height: 1.7;
+	}
+
+	.intro p:first-of-type {
+		margin-top: 1.25rem;
+		color: var(--text);
+		font-size: 1.125rem;
+	}
+
+	.section + .section {
+		margin-top: 3.5rem;
+	}
+
+	.empty {
+		color: var(--text-muted);
+	}
+
+	.project-strip {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+		gap: 1rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+</style>

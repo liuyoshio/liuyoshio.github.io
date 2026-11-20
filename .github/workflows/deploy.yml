@@ -1,0 +1,46 @@
+# Builds the site with the official Astro action and deploys it to GitHub Pages.
+# Follows https://docs.astro.build/en/guides/deploy/github/
+# Requires: repo `liuyoshio.github.io`, Settings -> Pages -> Source: "GitHub Actions".
+name: Deploy to GitHub Pages
+
+on:
+  # Trigger the workflow every time you push to the `main` branch
+  push:
+    branches: [main]
+  # Allows you to run this workflow manually from the Actions tab on GitHub.
+  workflow_dispatch:
+
+# Allow this job to clone the repo and create a page deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push waits instead of cancelling a running deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repository using git
+        uses: actions/checkout@v7
+      - name: Install, build, and upload your site
+        uses: withastro/action@v6
+        with:
+          node-version: 24
+          # Same pnpm as package.json `packageManager` and pnpm-lock.yaml.
+          package-manager: pnpm@9.15.0
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

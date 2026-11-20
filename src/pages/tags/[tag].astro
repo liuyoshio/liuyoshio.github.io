@@ -1,0 +1,31 @@
+---
+import PostList from '../../components/PostList.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { collectTags, getPosts, type TagInfo } from '../../lib/posts';
+
+export async function getStaticPaths() {
+	const tags = collectTags(await getPosts());
+	return tags.map((tag) => ({ params: { tag: tag.slug }, props: { tag } }));
+}
+
+interface Props {
+	tag: TagInfo;
+}
+
+const { tag } = Astro.props;
+const count = tag.posts.length;
+---
+
+<BaseLayout title={`Posts tagged “${tag.name}”`} description={`Posts about ${tag.name}.`}>
+	<div class="container">
+		<header class="page-header">
+			<p class="section-title">Tag</p>
+			<h1 class="page-title">{tag.name}</h1>
+			<p class="page-lede">
+				{count} {count === 1 ? 'post' : 'posts'} · <a href="/tags/">All tags</a> ·{' '}
+				<a href="/blog/">All posts</a>
+			</p>
+		</header>
+		<PostList posts={tag.posts} headingLevel={2} />
+	</div>
+</BaseLayout>

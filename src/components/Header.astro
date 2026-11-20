@@ -1,0 +1,75 @@
+---
+import { SITE_TITLE } from '../consts';
+import HeaderLink from './HeaderLink.astro';
+import SocialLinks from './SocialLinks.astro';
+import ThemeToggle from './ThemeToggle.astro';
+---
+
+<header class="site-header">
+	<div class="container bar">
+		<a class="brand" href="/">{SITE_TITLE}</a>
+		<nav class="nav" aria-label="Main">
+			<ul>
+				<li><HeaderLink href="/blog/">Blog</HeaderLink></li>
+				<li><HeaderLink href="/projects/">Projects</HeaderLink></li>
+				<li><HeaderLink href="/about/">About</HeaderLink></li>
+			</ul>
+		</nav>
+		<div class="actions">
+			<SocialLinks />
+			<ThemeToggle />
+		</div>
+	</div>
+</header>
+
+<style>
+	.site-header {
+		border-bottom: 1px solid var(--border);
+	}
+
+	.bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		column-gap: 1.5rem;
+		row-gap: 0.25rem;
+		padding-block: 0.75rem;
+	}
+
+	.brand {
+		margin-right: auto;
+		color: var(--text);
+		font-weight: 680;
+		font-size: 1.0625rem;
+		letter-spacing: -0.01em;
+		text-decoration: none;
+	}
+
+	.brand:hover {
+		color: var(--accent);
+	}
+
+	.nav ul {
+		display: flex;
+		gap: 0.25rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: 0.125rem;
+		margin-right: -0.5rem;
+	}
+
+	/* Phones: brand + icons on the first row, the nav on its own row. */
+	@media (max-width: 39.99rem) {
+		.nav {
+			order: 3;
+			width: 100%;
+			margin-left: -0.625rem;
+		}
+	}
+</style>

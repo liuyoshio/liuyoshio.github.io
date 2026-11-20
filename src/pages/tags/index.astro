@@ -1,0 +1,62 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { collectTags, getPosts, tagUrl } from '../../lib/posts';
+
+const tags = collectTags(await getPosts());
+---
+
+<BaseLayout title="Tags" description="Every tag used on the blog.">
+	<div class="container">
+		<header class="page-header">
+			<h1 class="page-title">Tags</h1>
+		</header>
+		{
+			tags.length > 0 ? (
+				<ul class="tags">
+					{tags.map((tag) => (
+						<li>
+							<a href={tagUrl(tag.name)}>{tag.name}</a>
+							<span class="count">
+								{tag.posts.length} {tag.posts.length === 1 ? 'post' : 'posts'}
+							</span>
+						</li>
+					))}
+				</ul>
+			) : (
+				<p>No tags yet.</p>
+			)
+		}
+	</div>
+</BaseLayout>
+
+<style>
+	.tags {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.tags li {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding-block: 0.625rem;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.tags a {
+		font-weight: 550;
+		text-decoration: none;
+	}
+
+	.tags a:hover {
+		text-decoration: underline;
+	}
+
+	.count {
+		color: var(--text-muted);
+		font-size: 0.875rem;
+		font-variant-numeric: tabular-nums;
+	}
+</style>

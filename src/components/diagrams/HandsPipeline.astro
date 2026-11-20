@@ -1,0 +1,199 @@
+---
+/**
+ * One hands step, as core/hands.mjs runs it: resolve the target, the first-touch app grant,
+ * attention (busy: a background-capable step proceeds, a front step waits), the mark (ring,
+ * label and ghost cursor, then about 350 ms), act, and the result back to the executor.
+ * Facts: the project's docs/how-it-works.md ("The hands pipeline") and docs/protocol.md.
+ */
+import Diagram from './Diagram.astro';
+import { NARROW, WIDE, arrow, circle, g, line, rect, svg, text, wrap } from './svg';
+import { drawBlock, ghost, layoutBlock, markLabel, ring } from './operator';
+import './operator.css';
+
+interface Props {
+	caption?: string;
+	wide?: boolean;
+}
+
+const {
+	caption = 'One hands step. Every click, keystroke and look at the screen runs these six stages in order, one call at a time. The target is resolved first, so the mark can land on it before the action does.',
+	wide = false,
+} = Astro.props;
+
+type Art = (x: number, y: number, w: number) => { m: string; h: number };
+
+/** resolve: what the call turns into */
+const artResolve: Art = (x, y, w) => {
+	const rows: [string, string][] = [
+		['app', 'Notes'],
+		['rect', '412, 96, 28 × 24'],
+		['point', '426, 108'],
+	];
+	const bw = Math.min(w, 220);
+	const h = 12 + rows.length * 16 + 4;
+	const out = [rect(x, y, bw, h, 'f-box-soft', { rx: 6 })];
+	rows.forEach(([k, v], i) => {
+		out.push(text(x + 10, y + 24 + i * 16, k, { cls: 'dg-m op-mu' }));
+		out.push(text(x + 64, y + 24 + i * 16, v, { cls: 'dg-m' }));
+	});
+	return { m: out.join(''), h };
+};
+
+/** grant: the core's own card, once per app */
+const artGrant: Art = (x, y, w) => {
+	const cw = Math.min(w, 236);
+	const out = [rect(x, y, cw, 70, 'op-glass', { rx: 10 })];
+	out.push(text(x + 12, y + 23, 'Allow controlling Notes?', { cls: 'dg-t dg-b op-gt' }));
+	out.push(rect(x + 12, y + 36, 78, 22, 'op-btn', { rx: 11 }));
+	out.push(text(x + 51, y + 51, 'Approve', { cls: 'dg-s op-btn-t', anchor: 'middle' }));
+	out.push(rect(x + 96, y + 36, 74, 22, 'op-btn-2', { rx: 11 }));
+	out.push(text(x + 133, y + 51, 'Decline', { cls: 'dg-s op-gt', anchor: 'middle' }));
+	const nl = wrap('Declined: the step fails, with an error Claude reads.', w - 14);
+	out.push(circle(x + 4, y + 88, 3.5, 'f-crit'));
+	out.push(text(x + 14, y + 92, nl, { cls: 'dg-s', lh: 15 }));
+	return { m: out.join(''), h: 92 + (nl.length - 1) * 15 + 4 };
+};
+
+/** attention: the three ways a step can go */
+const artAttention: Art = (x, y, w) => {
+	const cases = [
+		{ box: 'f-box', title: 'Not busy', body: 'The target comes to the front.' },
+		{
+			box: 'op-yel-box',
+			title: 'Busy, and the step can run in the background',
+			body: 'see, or a press through Accessibility: it runs without taking the front, and a yellow edge tab says where.',
+		},
+		{
+			box: 'op-yel-box op-dash',
+			title: 'Busy, and the step needs the front',
+			body: 'type, key, scroll, open, or a click at a point: it waits until you pause for 3\u00a0s or say “go ahead”.',
+		},
+	];
+	let yy = y;
+	const out: string[] = [];
+	for (const c of cases) {
+		const L = layoutBlock(w, c.title, c.body);
+		out.push(drawBlock(x, yy, L, { box: c.box }));
+		yy += L.h + 6;
+	}
+	return { m: out.join(''), h: yy - 6 - y };
+};
+
+/** mark: ring, label and ghost cursor on the target, in a sliver of the app's window */
+const artMark: Art = (x, y, w) => {
+	const ww = Math.min(w, 290);
+	const h = 74;
+	const out = [rect(x, y, ww, h, 'f-box', { rx: 7 })];
+	// title bar
+	out.push(rect(x, y, ww, 20, 'f-wash', { rx: 7 }), rect(x, y + 14, ww, 6, 'f-wash'));
+	out.push(line(x, y + 20, x + ww, y + 20, 's-grid'));
+	for (let i = 0; i < 3; i++) out.push(circle(x + 12 + i * 11, y + 10, 3.5, 'f-wash-2'));
+	// the target: a compose button
+	const bx = x + 18;
+	const by = y + 34;
+	out.push(rect(bx, by, 28, 24, 'f-box-soft', { rx: 5 }));
+	out.push(rect(bx + 8, by + 6, 12, 12, 's-muted', { rx: 2 }));
+	out.push(line(bx + 12, by + 14, bx + 20, by + 6, 's-muted'));
+	// another control, untouched
+	out.push(rect(bx + 40, by, 28, 24, 'f-box-soft', { rx: 5 }));
+	out.push(circle(bx + 54, by + 12, 5, 's-muted'));
+	out.push(ring(bx, by, 28, 24, { rx: 5 }));
+	const lab = markLabel(bx + 80, by, 'New note');
+	out.push(lab.m);
+	out.push(ghost(bx + 16, by + 14, 0.75));
+	// the pause
+	const tx = bx + 80 + lab.w + 12;
+	if (tx + 60 < x + ww) out.push(text(tx, by + 16.5, '≈350 ms', { cls: 'dg-s' }));
+	return { m: out.join(''), h };
+};
+
+/** act: input that would land elsewhere is never sent */
+const artAct: Art = (x, y, w) => {
+	const L = layoutBlock(w, 'Would it land somewhere else?', 'If the point is off the target’s window, or the target lacks keyboard focus, nothing is sent and the step fails with a reason.');
+	return { m: drawBlock(x, y, L, { box: 'op-crit-box' }), h: L.h };
+};
+
+/** return: the one line Claude reads */
+const artReturn: Art = (x, y, w) => {
+	const s = 'Clicked 14 in Notes. Frontmost: Notes.';
+	const bw = Math.min(w, s.length * 7.2 + 20);
+	return {
+		m: rect(x, y, bw, 30, 'f-box-soft', { rx: 6 }) + text(x + 10, y + 19.5, s, { cls: 'dg-m' }),
+		h: 30,
+	};
+};
+
+const steps: { name: string; body: string; art: Art; wideOnly?: boolean }[] = [
+	{
+		name: 'Resolve',
+		body: 'Find what the call points at: an element id from the last see, a point in the last screenshot, a Dock icon (to open an app), or the app itself.',
+		art: artResolve,
+		wideOnly: true,
+	},
+	{ name: 'Grant', body: 'The first time the hands touch an app, a card asks you. The answer is saved, so each app asks once.', art: artGrant },
+	{ name: 'Attention', body: 'Are you busy? You are if you used the keyboard or mouse in the last 3\u00a0s.', art: artAttention },
+	{
+		name: 'Mark',
+		body: 'The ring lands on the target with the step’s label, and the ghost cursor flies to the point. The step waits about 350\u00a0ms, so you see where before anything happens.',
+		art: artMark,
+	},
+	{ name: 'Act', body: 'Through the app: a press through Accessibility, or a click, keys, text or a scroll.', art: artAct },
+	{
+		name: 'Return',
+		body: 'One line back to Claude: what happened, and which app is in front. A see returns a screenshot and an element list instead.',
+		art: artReturn,
+	},
+];
+
+function build(W: number): string {
+	const narrow = W < 500;
+	const M = narrow ? 10 : 12;
+	const nx = M + 11; // the spine
+	const tx = M + 34;
+	const textW = narrow ? W - M - tx : 236;
+	const artX = narrow ? tx : tx + textW + 22;
+	const artW = W - M - artX;
+	const parts: string[] = [];
+	let y = 8;
+
+	// ---- the call ----
+	parts.push(rect(nx - 5, y + 5, 10, 10, 'f-ink', { rx: 2 }));
+	parts.push(text(tx, y + 14, 'Claude calls a hands tool', { cls: 'dg-t dg-b' }));
+	parts.push(text(tx, y + 32, 'click(element: 14, label: "New note")', { cls: 'dg-m' }));
+	let prevBottom = y + 15;
+	y += 54;
+
+	steps.forEach((s, i) => {
+		const top = y;
+		parts.push(arrow(nx, prevBottom + 3, nx, top - 2));
+		parts.push(circle(nx, top + 10, 11, 'op-node'));
+		parts.push(text(nx, top + 14.5, String(i + 1), { cls: 'dg-s dg-b', anchor: 'middle' }));
+		parts.push(text(tx, top + 15, s.name, { cls: 'dg-h' }));
+		const bl = wrap(s.body, textW);
+		parts.push(text(tx, top + 33, bl, { cls: 'dg-s', lh: 15 }));
+		const textBottom = top + 33 + (bl.length - 1) * 15 + 4;
+		const artTop = narrow ? textBottom + 10 : top + 2;
+		const a = narrow && s.wideOnly ? { m: '', h: -10 } : s.art(artX, artTop, artW);
+		parts.push(a.m);
+		prevBottom = top + 21;
+		y = Math.max(textBottom, artTop + a.h) + (narrow ? 24 : 20);
+	});
+	y -= narrow ? 14 : 10;
+
+	return svg({
+		w: W,
+		h: y,
+		title: 'One hands step, stage by stage',
+		desc: 'Claude calls a hands tool, for example click with element 14 and the label New note. 1, resolve: the call becomes an app, a rect and a point, from an element id of the last see, a point in the last screenshot, a Dock icon, or the app itself. 2, grant: the first time the hands touch an app, the core shows a card, Allow controlling Notes?, and saves the answer; if you decline, the step fails with an error Claude reads. 3, attention: you are busy if you used the keyboard or mouse in the last 3 seconds. If you are not busy, the target comes to the front. If you are busy and the step can run in the background (see, or a press through Accessibility), it runs without taking the front and a yellow edge tab says where. If you are busy and the step needs the front (type, key, scroll, open, or a click at a point), it waits until you pause for 3 seconds or say go ahead. 4, mark: a coral ring lands on the target with the step’s label, the ghost cursor flies to the point, and the step waits about 350 ms. 5, act: through the app; input that would land somewhere else is never sent, and the step fails with a reason. 6, return: one line back to Claude, such as Clicked 14 in Notes. Frontmost: Notes. A see returns a screenshot and an element list instead.',
+		body: g(parts),
+	});
+}
+
+const wideSvg = build(WIDE);
+const narrowSvg = build(NARROW);
+---
+
+<Diagram caption={caption} wide={wide}>
+	<Fragment set:html={wideSvg} />
+	<Fragment slot="narrow" set:html={narrowSvg} />
+</Diagram>

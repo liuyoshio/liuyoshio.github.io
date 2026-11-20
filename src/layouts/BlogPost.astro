@@ -1,0 +1,302 @@
+---
+// Post page shell: title (the only h1), dates, reading time, tags, table of contents,
+// long-form typography, KaTeX styles, and the code-block copy buttons.
+// Same katex copy that rehype-katex renders with (pinned + overridden in package.json).
+import 'katex/dist/katex.min.css';
+import '../styles/prose.css';
+import type { MarkdownHeading } from 'astro';
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+import FormattedDate from '../components/FormattedDate.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import TagList from '../components/TagList.astro';
+import { srcsetWidths } from '../lib/images';
+import BaseLayout from './BaseLayout.astro';
+
+type Props = CollectionEntry<'blog'>['data'] & {
+	headings: MarkdownHeading[];
+	/** Estimated reading time in minutes. */
+	minutes: number;
+};
+
+const { title, description, pubDate, updatedDate, heroImage, tags, draft, headings, minutes } =
+	Astro.props;
+
+// h2/h3 only; skip the visually hidden "Footnotes" heading that GFM footnotes add.
+const tocHeadings = headings.filter(
+	(h) => (h.depth === 2 || h.depth === 3) && h.slug !== 'footnote-label',
+);
+const hasToc = tocHeadings.length >= 2;
+---
+
+<BaseLayout
+	title={title}
+	description={description}
+	image={heroImage}
+	type="article"
+	publishedTime={pubDate}
+	modifiedTime={updatedDate}
+	preloadSerif
+	noindex={draft}
+	layout={hasToc ? 'post' : 'default'}
+>
+	<div class:list={['container', 'post-grid', { 'has-toc': hasToc }]}>
+		<article class="post" aria-labelledby="post-title">
+			<header class="post-header">
+				<h1 id="post-title" class="post-title">{title}</h1>
+				<p class="meta post-meta">
+					{draft && <span class="badge">Draft</span>}
+					<span><FormattedDate date={pubDate} /></span>
+					{
+						updatedDate && (
+							<span>
+								Updated <FormattedDate date={updatedDate} />
+							</span>
+						)
+					}
+					<span>{minutes} min read</span>
+				</p>
+				<TagList tags={tags} class="post-tags" />
+			</header>
+
+			{
+				heroImage && (
+					<div class="post-hero">
+						<Image
+							src={heroImage}
+							alt=""
+							widths={srcsetWidths(heroImage, [480, 720, 960, 1408])}
+							sizes="(min-width: 47rem) 44rem, calc(100vw - 2rem)"
+							priority
+						/>
+					</div>
+				)
+			}
+
+			{hasToc && <TableOfContents headings={tocHeadings} variant="inline" />}
+
+			<div class="prose">
+				<slot />
+			</div>
+
+			<footer class="post-footer">
+				<a class="back-link" href="/blog/"><span aria-hidden="true">←</span> All posts</a>
+			</footer>
+		</article>
+
+		{
+			hasToc && (
+				<div class="toc-column">
+					<TableOfContents headings={tocHeadings} variant="side" />
+				</div>
+			)
+		}
+	</div>
+
+	<p class="sr-only" role="status" id="copy-status"></p>
+</BaseLayout>
+
+<script>
+	// Copy buttons on code blocks (markup from src/plugins/rehype-prose-wrappers.mjs).
+	const status = document.getElementById('copy-status');
+
+	async function copyText(text: string): Promise<boolean> {
+		try {
+			await navigator.clipboard.writeText(text);
+			return true;
+		} catch {
+			// Clipboard API missing or blocked: fall back to a hidden textarea.
+			const previous = document.activeElement as HTMLElement | null;
+			const area = document.createElement('textarea');
+			area.value = text;
+			area.setAttribute('readonly', '');
+			area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+			document.body.append(area);
+			area.select();
+			const ok = document.execCommand('copy');
+			area.remove();
+			previous?.focus();
+			return ok;
+		}
+	}
+
+	for (const button of document.querySelectorAll<HTMLButtonElement>('.code-copy')) {
+		button.hidden = false;
+		let timer: number | undefined;
+		button.addEventListener('click', async () => {
+			const code = button.closest('.code-block')?.querySelector('pre code');
+			if (!code) return;
+			const ok = await copyText(code.textContent ?? '');
+			button.textContent = ok ? 'Copied' : 'Copy failed';
+			if (ok) button.dataset.copied = '';
+			if (status) status.textContent = ok ? 'Code copied to clipboard' : 'Could not copy the code';
+			window.clearTimeout(timer);
+			timer = window.setTimeout(() => {
+				button.textContent = 'Copy';
+				delete button.dataset.copied;
+				if (status) status.textContent = '';
+			}, 2000);
+		});
+	}
+
+	// Highlight the current section in the side table of contents.
+	const links = [...document.querySelectorAll<HTMLAnchorElement>('.toc-side a[href^="#"]')];
+	const targets = links
+		.map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1))))
+		.filter((el): el is HTMLElement => el !== null);
+
+	if (targets.length > 0) {
+		let ticking = false;
+		const update = () => {
+			ticking = false;
+			let current = 0;
+			for (let i = 0; i < targets.length; i++) {
+				if (targets[i].getBoundingClientRect().top <= 120) current = i;
+				else break;
+			}
+			links.forEach((link, i) => {
+				if (i === current) link.setAttribute('aria-current', 'true');
+				else link.removeAttribute('aria-current');
+			});
+		};
+		window.addEventListener(
+			'scroll',
+			() => {
+				if (!ticking) {
+					ticking = true;
+					requestAnimationFrame(update);
+				}
+			},
+			{ passive: true },
+		);
+		update();
+	}
+</script>
+
+<style>
+	/*
+	  Below 72rem: the article area is up to 60rem wide (room for wide figures) while the
+	  header, text and footer stay centred at 44rem, lined up with the site header.
+	  From 72rem with a table of contents: text on the left, contents in a sticky column.
+	*/
+	.container.post-grid {
+		max-width: calc(60rem + 2 * var(--gutter));
+	}
+
+	.post {
+		container-type: inline-size;
+		min-width: 0;
+	}
+
+	.post-header,
+	.post-hero,
+	.post-footer {
+		max-width: 44rem;
+		margin-inline: auto;
+	}
+
+	.post-header {
+		margin-bottom: 2.25rem;
+	}
+
+	.post-title {
+		font-size: clamp(1.875rem, 1.45rem + 1.9vw, 2.625rem);
+		font-weight: 720;
+		line-height: 1.13;
+		letter-spacing: -0.024em;
+	}
+
+	.post-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem 0;
+		margin-top: 1rem;
+	}
+
+	/* The separator trails each item, so a wrapped line never starts with a dot. */
+	.post-meta > span:not(:last-child, .badge)::after {
+		content: '·';
+		margin-inline: 0.5rem;
+		color: var(--text-faint);
+	}
+
+	.post-meta > .badge {
+		margin-right: 0.75rem;
+	}
+
+	:global(.post-tags) {
+		margin-top: 1rem !important;
+	}
+
+	.post-hero {
+		margin-bottom: 2.25rem;
+	}
+
+	.post-hero :global(img) {
+		display: block;
+		width: 100%;
+		height: auto;
+		border-radius: var(--radius);
+	}
+
+	.post :global(.toc-inline) {
+		max-width: 44rem;
+		margin: 0 auto 2.25rem;
+	}
+
+	.post-footer {
+		margin-top: 3.5rem;
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--border);
+	}
+
+	.back-link {
+		font-weight: 500;
+		text-decoration: none;
+	}
+
+	.back-link:hover {
+		text-decoration: underline;
+	}
+
+	.toc-column {
+		display: none;
+	}
+
+	/* Wide screens: text column on the left, sticky contents on the right. */
+	@media (min-width: 72rem) {
+		.container.post-grid.has-toc {
+			max-width: calc(var(--wide) + 2 * var(--gutter));
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) 15rem;
+			column-gap: 4rem;
+			align-items: start;
+		}
+
+		.has-toc .post-header,
+		.has-toc .post-hero,
+		.has-toc .post-footer,
+		.has-toc :global(.prose) {
+			margin-inline: 0;
+		}
+
+		.has-toc :global(.prose .figure--wide) {
+			margin-inline: 0;
+		}
+
+		.has-toc :global(.toc-inline) {
+			display: none;
+		}
+
+		.toc-column {
+			display: block;
+			position: sticky;
+			top: 2rem;
+			max-height: calc(100vh - 4rem);
+			overflow-y: auto;
+			padding-top: 0.5rem;
+			overscroll-behavior: contain;
+		}
+	}
+</style>
