@@ -48,7 +48,7 @@ const artGrant: Art = (x, y, w) => {
 	out.push(text(x + 51, y + 51, 'Approve', { cls: 'dg-s op-btn-t', anchor: 'middle' }));
 	out.push(rect(x + 96, y + 36, 74, 22, 'op-btn-2', { rx: 11 }));
 	out.push(text(x + 133, y + 51, 'Decline', { cls: 'dg-s op-gt', anchor: 'middle' }));
-	const nl = wrap('Declined: the step fails, with an error Claude reads.', w - 14);
+	const nl = wrap('Declined: the step fails, with an error the agent reads.', w - 14);
 	out.push(circle(x + 4, y + 88, 3.5, 'f-crit'));
 	out.push(text(x + 14, y + 92, nl, { cls: 'dg-s', lh: 15 }));
 	return { m: out.join(''), h: 92 + (nl.length - 1) * 15 + 4 };
@@ -66,7 +66,7 @@ const artAttention: Art = (x, y, w) => {
 		{
 			box: 'op-yel-box op-dash',
 			title: 'Busy, and the step needs the front',
-			body: 'type, key, scroll, open, or a click at a point: it waits until you pause for 3\u00a0s or say “go ahead”.',
+			body: 'type, key, scroll, drag, open, or a click at a point: it waits until you pause for 3\u00a0s or say “go ahead”.',
 		},
 	];
 	let yy = y;
@@ -113,7 +113,7 @@ const artAct: Art = (x, y, w) => {
 	return { m: drawBlock(x, y, L, { box: 'op-crit-box' }), h: L.h };
 };
 
-/** return: the one line Claude reads */
+/** return: the line the agent reads */
 const artReturn: Art = (x, y, w) => {
 	const s = 'Clicked 14 in Notes. Frontmost: Notes.';
 	const bw = Math.min(w, s.length * 7.2 + 20);
@@ -140,7 +140,7 @@ const steps: { name: string; body: string; art: Art; wideOnly?: boolean }[] = [
 	{ name: 'Act', body: 'Through the app: a press through Accessibility, or a click, keys, text or a scroll.', art: artAct },
 	{
 		name: 'Return',
-		body: 'One line back to Claude: what happened, and which app is in front. A see returns a screenshot and an element list instead.',
+		body: 'Back to the agent: what happened, and the app’s new element list. A see returns the list too, and a screenshot only when the agent asks.',
 		art: artReturn,
 	},
 ];
@@ -158,7 +158,7 @@ function build(W: number): string {
 
 	// ---- the call ----
 	parts.push(rect(nx - 5, y + 5, 10, 10, 'f-ink', { rx: 2 }));
-	parts.push(text(tx, y + 14, 'Claude calls a hands tool', { cls: 'dg-t dg-b' }));
+	parts.push(text(tx, y + 14, 'The agent calls a hands tool', { cls: 'dg-t dg-b' }));
 	parts.push(text(tx, y + 32, 'click(element: 14, label: "New note")', { cls: 'dg-m' }));
 	let prevBottom = y + 15;
 	y += 54;
@@ -184,7 +184,7 @@ function build(W: number): string {
 		w: W,
 		h: y,
 		title: 'One hands step, stage by stage',
-		desc: 'Claude calls a hands tool, for example click with element 14 and the label New note. 1, resolve: the call becomes an app, a rect and a point, from an element id of the last see, a point in the last screenshot, a Dock icon, or the app itself. 2, grant: the first time the hands touch an app, the core shows a card, Allow controlling Notes?, and saves the answer; if you decline, the step fails with an error Claude reads. 3, attention: you are busy if you used the keyboard or mouse in the last 3 seconds. If you are not busy, the target comes to the front. If you are busy and the step can run in the background (see, or a press through Accessibility), it runs without taking the front and a yellow edge tab says where. If you are busy and the step needs the front (type, key, scroll, open, or a click at a point), it waits until you pause for 3 seconds or say go ahead. 4, mark: a coral ring lands on the target with the step’s label, the ghost cursor flies to the point, and the step waits about 350 ms. 5, act: through the app; input that would land somewhere else is never sent, and the step fails with a reason. 6, return: one line back to Claude, such as Clicked 14 in Notes. Frontmost: Notes. A see returns a screenshot and an element list instead.',
+		desc: 'The agent calls a hands tool, for example click with element 14 and the label New note. 1, resolve: the call becomes an app, a rect and a point, from an element id of the last see, a point in the last screenshot, a Dock icon, or the app itself. 2, grant: the first time the hands touch an app, the core shows a card, Allow controlling Notes?, and saves the answer; if you decline, the step fails with an error the agent reads. 3, attention: you are busy if you used the keyboard or mouse in the last 3 seconds. If you are not busy, the target comes to the front. If you are busy and the step can run in the background (see, or a press through Accessibility), it runs without taking the front and a yellow edge tab says where. If you are busy and the step needs the front (type, key, scroll, drag, open, or a click at a point), it waits until you pause for 3 seconds or say go ahead. 4, mark: a coral ring lands on the target with the step’s label, the ghost cursor flies to the point, and the step waits about 350 ms. 5, act: through the app; input that would land somewhere else is never sent, and the step fails with a reason. 6, return: back to the agent, what happened, such as Clicked 14 in Notes. Frontmost: Notes, and the app’s new element list. A see returns the list too, and a screenshot only when the agent asks.',
 		body: g(parts),
 	});
 }

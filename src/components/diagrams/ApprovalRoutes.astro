@@ -1,10 +1,10 @@
 ---
 /**
- * Approvals: three sources (a permission request relayed by the channel, a dialog only the
- * terminal shows, the first touch of an app) become one card, with a chime and the assistant's
- * "...Approve?", answered by click or voice. The core sends the answer back the way the
- * question came: a channel answer; arrow keys and Enter on "Yes", never "always"; a saved
- * app grant. Facts: the project's docs/how-it-works.md ("Approvals") and docs/protocol.md.
+ * Approvals: two sources (the agent asking to use a tool, through Claude Code's permission
+ * callback or a Codex approval request, and the core's own first touch of an app) become one
+ * card, with a chime and the assistant's "...Approve?", answered by click or voice. The core
+ * sends the answer back the way the question came: allow for that one call, never "always"; a
+ * saved app grant. Facts: the project's docs/how-it-works.md ("Approvals") and docs/protocol.md.
  */
 import Diagram from './Diagram.astro';
 import { NARROW, WIDE, arrow, el, g, line, rect, svg, text, wrap } from './svg';
@@ -17,24 +17,17 @@ interface Props {
 }
 
 const {
-	caption = 'Three sources, one card. Whatever asks, you get the same card with the same chime, and you answer it the same way, by click or by voice. The core sends the answer back the way the question came, and Approve always means “yes, this once”.',
+	caption = 'Two sources, one card. Whether the agent asks or the core does, you get the same card with the same chime, and you answer it the same way, by click or by voice. The core sends the answer back the way the question came, and Approve always means “yes, this once”.',
 	wide = false,
 } = Astro.props;
 
 const routes = [
 	{
-		tag: 'Relay',
-		from: 'Claude Code asks to use a tool, and the channel relays the request.',
-		fromN: 'Claude Code asks to use a tool; the channel relays it',
-		back: 'Allow, sent back through the channel.',
-		backN: 'allow, sent back through the channel',
-	},
-	{
-		tag: 'Terminal',
-		from: 'A dialog only the terminal shows, such as the startup warning, read from the tmux pane.',
-		fromN: 'a dialog only the terminal shows, read from the pane',
-		back: 'Arrow keys to the option that is exactly “Yes”, never “always”. Enter only after a fresh read of the pane.',
-		backN: 'arrow keys to “Yes”, never “always”, then Enter',
+		tag: 'Agent',
+		from: 'The agent asks to use a tool: Claude Code’s permission callback, or a Codex approval request.',
+		fromN: 'the agent asks to use a tool (Claude Code or Codex)',
+		back: 'Allow for that one call, as the callback’s answer or Codex’s accept. Never “always”.',
+		backN: 'allow for that one call, never “always”',
 	},
 	{
 		tag: 'Core',
@@ -59,7 +52,7 @@ function speaker(x: number, cy: number): string {
 function card(x: number, y: number, w: number): { m: string; h: number } {
 	const p = 12;
 	const tl = wrap('The question, in plain words', w - 2 * p, 13, { bold: true });
-	const dl = wrap('and its detail; never the numbered options', w - 2 * p);
+	const dl = wrap('and what the step would do; never the agent’s own options', w - 2 * p);
 	const out: string[] = [];
 	let yy = y + p + 11;
 	const body: string[] = [];
@@ -139,7 +132,7 @@ function build(W: number): string {
 	} else {
 		// the same, turned: sources on top, the card, the routes back below
 		const gapX = 9;
-		const colW = (inner - 2 * gapX) / 3;
+		const colW = (inner - (routes.length - 1) * gapX) / routes.length;
 		const colX = (i: number) => M + i * (colW + gapX);
 		const from = routes.map((r) => layoutBlock(colW, r.tag, r.fromN, { pad: 8 }));
 		const back = routes.map((r) => layoutBlock(colW, r.tag, r.backN, { pad: 8 }));
@@ -164,8 +157,8 @@ function build(W: number): string {
 	return svg({
 		w: W,
 		h: y,
-		title: 'Three approval sources, one card, three ways back',
-		desc: 'Three things can ask for your OK. Relay: Claude Code asks to use a tool, and the channel relays the request. Terminal: a dialog only the terminal shows, such as the startup warning, read from the tmux pane. Core: the hands touch an app for the first time, as in Allow controlling Notes? All three become the same card: a chime, the assistant asks “…Approve?”, and the card shows the question and its detail (never the numbered options), the hint Say “yes, I approve”, and Approve and Decline buttons. You answer by click or by voice. The answer goes back the way the question came: through the channel for a relayed request; for a terminal dialog, arrow keys to the option that is exactly “Yes”, never “always”, and Enter only after a fresh read of the pane; for the core, it is saved as the app’s grant and the waiting step goes on.',
+		title: 'Two approval sources, one card, two ways back',
+		desc: 'Two things can ask for your OK. Agent: the agent asks to use a tool, through Claude Code’s permission callback or a Codex approval request. Core: the hands touch an app for the first time, as in Allow controlling Notes? Both become the same card: a chime, the assistant asks “…Approve?”, and the card shows the question and what the step would do (never the agent’s own options), the hint Say “yes, I approve”, and Approve and Decline buttons. You answer by click or by voice. The answer goes back the way the question came: for the agent, allow for that one call, as the callback’s answer or Codex’s accept, never “always”; for the core, it is saved as the app’s grant and the waiting step goes on.',
 		body: g(parts),
 	});
 }

@@ -37,6 +37,8 @@ export default defineConfig({
 	// GitHub Pages user site (repo `liuyoshio.github.io`), so no `base` is needed.
 	site: 'https://liuyoshio.github.io',
 	integrations: [mdx(), sitemap()],
+	// A Lookma update post was folded into the deep dive; keep its old link working.
+	redirects: { '/blog/lookma-swaps-both-ends': '/blog/lookma-under-the-hood/' },
 	markdown: {
 		// Astro 7 defaults to the Sätteri processor; remark/rehype plugins need Unified.
 		// MDX inherits this processor (and the Shiki config below).

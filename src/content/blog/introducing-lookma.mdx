@@ -57,13 +57,20 @@ export const art = ({ name, alt, wide = false, small = false }) => {
 	alt: "A person on a stationary bike says 'Hey Lookma, visualize this data for me', and Lookma builds a chart on the living-room TV while they keep pedaling.",
 })}
 
-<p class="lm-lede" style="text-align:center;font-size:.9em;opacity:.75">Talk to it from across the room.</p>
+<p class="lm-lede" style="text-align:center;font-size:.9em;opacity:.75">Tap fn once, then talk to it from across the room.</p>
 
 ## Why I built it
 
 I wanted to ride my exercise bike, look up at the TV, and just tell my computer what to do, then watch it happen.
-So there is no key to press. While {NAME} runs it listens, and you talk to it from across the room. Pause it
-from the menu bar when you want quiet.
+
+So at first there was no key to press. While {NAME} ran, it listened. That lasted until it overheard me
+talking *about* {NAME} ("the voice doesn't feel like a real conversation") and the agent set out to send a
+Slack message to someone it had made up. I hit pause about ten seconds in.
+
+Now you talk to it like a walkie-talkie. Hold the fn key, say what you want, let go. While the key is up the
+microphone is off and nothing goes anywhere. For the bike, tap fn once instead: that opens a hands-free
+conversation, and it closes by itself after 20 seconds of quiet. If you really do want it listening all the
+time, that is still there as an option.
 
 ## What it is
 
@@ -73,7 +80,7 @@ from the menu bar when you want quiet.
 })}
 
 {NAME} is a free, open-source app for your Mac. You talk, and an AI does the clicking and typing
-in the apps you already use.
+in the apps you already use. The AI is the coding agent you probably already have: Claude Code or Codex.
 
 The point is that it works where you can see it. Not in a hidden browser in the cloud. Not in a
 background window you never see. Right in front of you, where you can say "stop".
@@ -81,6 +88,12 @@ background window you never see. Right in front of you, where you can say "stop"
 Yesterday I said "find three sushi places near the Ferry Building and put them in a new note",
 and took my hands off the keyboard. Maps opened. A search ran. A note appeared with three names
 in it. I watched every step.
+
+It talks while it works, too. Say "open Maps" and you hear "OK, opening Maps" right away, then news as
+it happens. That wasn't true at first. The first version was a terse butler: after "open Maps" it went
+quiet for about fifteen seconds, then said "I've opened Maps". It did not feel like talking to a person,
+so I rebuilt the voice around one idea: it owes you a reply to everything you say, and it isn't done until
+you've actually heard one. If a reply gets lost, it says it again later.
 
 ## Three things that make it different
 
@@ -104,11 +117,12 @@ at once.
 	alt: "An approval card on screen, and a speech bubble saying yes, I approve.",
 })}
 
-Anything risky stops and asks. A card pops up with a soft chime. Click it, or say "yes, I
-approve" from across the room.
+Anything risky stops and asks. A card pops up with a soft chime. Click it, or say "yes, I approve":
+with fn held, or from across the room while a conversation is open.
 
-It is picky about that yes. "Ok" doesn't count. "Maybe" doesn't count. A mumble doesn't count. In
-169 test cases it never mistook a "wait" for a "yes".
+It is picky about that yes. "Ok" doesn't count. "Maybe" doesn't count. A mumble doesn't count. The
+voice decides what it heard, and then a second, separate check in code has to agree. Of 169 test cases
+that must not count as a yes, none got through.
 
 {NAME} doesn't take "ok" for an answer.
 
@@ -155,6 +169,12 @@ lookma doctor
 lookma ~/Projects
 ```
 
+Add `--agent codex` to let Codex do the work instead of Claude Code. Then hold fn, say "turn on dark mode", and let go.
+
+One setup step catches people: fn is also the Globe key, and a tap of it may switch your input source or
+open the emoji picker. Set System Settings > Keyboard > "Press Globe key to" to Do Nothing. Control-Space
+still switches input sources. `lookma doctor` checks this for you.
+
 Voice needs an OpenAI key: copy `.env.example` to `.env` and set `OPENAI_API_KEY`. Typing works
 without one. It is MIT licensed.
 
@@ -167,17 +187,19 @@ be mine.
 This is early, and I'd rather you hear it from me.
 
 - Mac only, and only your main display.
-- No dragging and no right-click yet.
-- It's not fast. A task with a few steps takes 10 to 20 seconds.
-- It runs on your Mac, with no account and no tracking. With voice on, it listens while it runs, and your audio goes to OpenAI. Pause it from the menu bar.
+- It can right-click and drag now, but a drag stays inside one app.
+- It's not fast. A task with a few steps still takes several seconds. Each click or keystroke takes from well under a second to about a second and a half; most of the wait is the agent thinking between steps.
+- It sometimes says it will do something and then doesn't start it. I'm watching that before I pick a fix.
+- It runs on your Mac, with no account and no tracking. The voice needs an OpenAI key, and what you say while you hold fn (or in a conversation) goes to OpenAI. Typing works without a key.
 - It can be wrong, and it is using your real computer. Start with small things.
 
 Watch it on anything that matters. Watching is the whole idea.
 
 ## What's next
 
-Codex is in now, as a second agent ([what changed](/blog/lookma-swaps-both-ends/)). Next: more voices, and an offline voice that never leaves your Mac. And for when
-you'd rather it not listen all the time, push-to-talk and an on-device "Hey Lookma" wake word, as options.
+Next come more voices: Gemini Live, then an offline voice that never leaves your Mac. After that, a "Hey
+Lookma" wake word, as an option next to the fn key. The agent and the voice are both plug-ins, one folder each, so a new one
+shouldn't need anything else to change.
 
 ## How it works
 

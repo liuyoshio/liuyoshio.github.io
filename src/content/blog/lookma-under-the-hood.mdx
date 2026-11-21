@@ -1,8 +1,9 @@
 ---
 title: 'How Lookma works: the hands, the manners and the spoken yes'
-description: 'A tour under the hood of Lookma, the open-source Mac agent that works on your real screen while you watch: why it has its own hands, how it steps aside when you are busy, and why a spoken "yes" took about 500 test sessions to trust.'
+description: 'A tour under the hood of Lookma, the open-source Mac agent that works on your real screen while you watch: why it has its own hands, how it steps aside when you are busy, why it waits for a key before it listens, and why a spoken "yes" took about 500 test sessions to trust.'
 pubDate: 2026-11-20
-tags: ['Lookma', 'agents', 'computer use', 'macOS', 'voice', 'Claude Code']
+updatedDate: 2026-11-20
+tags: ['Lookma', 'agents', 'computer use', 'macOS', 'voice', 'Claude Code', 'Codex']
 draft: false
 ---
 
@@ -14,11 +15,36 @@ import ConsentGate from '../../components/diagrams/ConsentGate.astro';
 
 export const NAME = 'Lookma';
 
-<Callout type="note" title="Update">
-	Since this post, Claude Code runs headless through the Claude Agent SDK, so the tmux pane
-	reading described below is gone. Codex works as a second agent, and the voice was rebuilt.
-	[What changed](/blog/lookma-swaps-both-ends/).
-</Callout>
+{/* Post art lives in src/assets/blog/lookma-under-the-hood/ as <name>.svg plus an optional
+    <name>-dark.svg. art() shows it with a plain <img> so the CSS animation inside the SVG runs. */}
+
+export const artUrls = import.meta.glob('../../assets/blog/lookma-under-the-hood/*.svg', {
+	eager: true,
+	query: '?url',
+	import: 'default',
+});
+
+export const art = ({ name, alt }) => {
+	const light = artUrls[`../../assets/blog/lookma-under-the-hood/${name}.svg`];
+	const dark = artUrls[`../../assets/blog/lookma-under-the-hood/${name}-dark.svg`] ?? light;
+	return (
+		<figure class="figure figure--wide lm-art">
+			<img class="lm-light" src={light} alt={alt} loading="lazy" decoding="async" />
+			<img class="lm-dark" src={dark} alt={alt} loading="lazy" decoding="async" />
+		</figure>
+	);
+};
+
+<style>{`
+	.lm-art img { width: 100%; height: auto; }
+	.lm-art .lm-dark { display: none; }
+	:root[data-theme='dark'] .lm-art .lm-light { display: none; }
+	:root[data-theme='dark'] .lm-art .lm-dark { display: block; }
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) .lm-art .lm-light { display: none; }
+		:root:not([data-theme='light']) .lm-art .lm-dark { display: block; }
+	}
+`}</style>
 
 The [launch post](/blog/introducing-lookma/) covers what {NAME} is and why I built it. The short
 version: you just say what you want, and an agent does it on your real screen, in your
@@ -26,9 +52,10 @@ own apps, while you watch. Nothing happens in a cloud browser or a virtual machi
 step, and you can stop it.
 
 This post is the tour under the hood. The model was capable from the first day, so most of the work
-went into three things I had not planned to spend time on: showing where the agent is about to act,
-staying out of my way while we share one computer, and deciding what counts as a spoken "yes". Here
-is how each one works, and the bugs that shaped it.
+went into things I had not planned to spend time on: showing where the agent is about to act,
+staying out of my way while we share one computer, and deciding what counts as a spoken "yes". Then
+I lived with it every day, and that changed two more: when it listens, and how it talks. Here is
+how each one works, and the bugs that shaped it.
 
 ## Version one, and four things wrong with it
 
@@ -67,22 +94,40 @@ That last one decided it. If I want to draw a mark on the screen before the clic
 the target before the click, in real screen coordinates. The only way to know that reliably is for
 the click to go through my own code.
 
-So the executor gets six tools, and nothing else for touching the desktop: `see`, `click`, `type`,
-`key`, `scroll` and `open`. All six are carried out by a small Swift app. To open an app, `open` presses its
-icon in the Dock, the way you would. The others work through the accessibility tree first, the same
-structure a screen reader uses, and fall back to coordinates when an element is not exposed there.
+So the agent gets a handful of tools, and nothing else for touching the desktop: `see`, `click`,
+`drag`, `type`, `key`, `scroll` and `open`. All of them are carried out by a small Swift app. To
+open an app, `open` presses its icon in the Dock, the way you would. The others work through the
+accessibility tree first, the same structure a screen reader uses, and fall back to coordinates
+when an element is not exposed there.
 
 Because every action passes through that app, the exact target is known ahead of time. A coral ring
 and a ghost cursor land on it about 350 ms before anything happens. That is long enough for your
-eye to get there and short enough that it does not feel like waiting.
+eye to get there and short enough that it does not feel like waiting. A drag gets a mark on both
+ends, where it picks up and where it drops, before the button goes down.
 
-<HandsPipeline caption="One step of the hands. The target is resolved first, so the mark can land on it before the action does." />
+<HandsPipeline caption="One step of the hands. The target is resolved first, so the mark lands before the action does, and the app's new elements come back after it." />
+
+### It squinted at every screen
+
+Once Codex could drive {NAME} too (more on that below), I asked it to open Maps. It took thirteen
+seconds, because it was squinting at a photo of my screen before every click: every look sent a
+full screenshot.
+
+But a Mac already describes itself. Every button, link and text field is in the accessibility tree,
+with its name. So now `see` reads that first, like someone who knows the app, and returns a short
+list of elements. A screenshot comes only when the agent asks for one, because the screen really has
+no words: a map, a canvas, a row of unlabeled icons. And every action comes back with the app's new
+element list, so the agent does not have to stop and look again after each click.
+
+While I was there, I fixed what made it clumsy. It can right-click, and the menu's items come first
+in the list it gets back, so it can pick one straight away. It can drag, inside one app. And
+scrolling used to move three lines at a time. Now it moves about a page and says where it landed, or that it reached the end.
 
 ### What it costs
 
-Narrow tools mean more calls, so I measured. Claude Sonnet, using only these six tools, ran each
-task twice, and every run ended with the correct result. The Calculator task enters a multiplication by
-clicking the buttons:
+Narrow tools mean more calls, so I measured. In my first measurement, Claude Sonnet, using only the
+original six tools, ran each task twice, and every run ended with the correct result. The
+Calculator task enters a multiplication by clicking the buttons:
 
 | Task | Time | Tool calls |
 | --- | --- | --- |
@@ -92,15 +137,18 @@ clicking the buttons:
 
 The useful number is where the time goes. The tools themselves took between 0.8 and 5.3 s of each
 run. A typical accessibility press takes about 7 ms, and a typical `see` about 200 ms. The rest is the
-model thinking between steps. The hands are not the bottleneck, and making them faster would not
-make the tool feel much faster.
+model thinking between steps.
 
-Ten to twenty seconds for a multi-step task is slow if you compare it with doing it yourself at the
-keyboard. It is fine when your hands are on handlebars.
+Later, once each step marked its target, acted and listed the app again, I added a log line that
+times every hands step. A step takes from well under a second to about a second and a half. Most of
+a task is still the agent thinking between steps.
+
+So making {NAME} feel faster is less about shaving milliseconds off clicks, and more about giving the agent less to think about, and keeping me in the loop while it
+works, so ten seconds of work does not feel like ten seconds of silence.
 
 ## What the hands taught me
 
-Writing six tools sounds like a weekend. Here is the list of things that took longer.
+Writing a few tools sounds like a weekend. Here is the list of things that took longer.
 
 **A press can succeed and do nothing.** The accessibility API lets you "press" an element, and it
 reports success. For some elements, SwiftUI menu buttons in my case, it reports success and nothing
@@ -139,7 +187,8 @@ steps split into two kinds:
 
 - steps that can run without taking the front, such as an accessibility press or `see`, go ahead,
   with a small hint at the edge of the screen so you know something happened;
-- steps that need the front wait, until you have been idle for 3 seconds or you say "go ahead".
+- steps that need the front, such as typing, a drag or a right-click, wait until you have been idle
+  for 3 seconds or you say "go ahead".
 
 This is a small rule, and it changed how the tool feels more than anything else here. Without it I
 kept my hands off the computer while the agent worked, which made it a machine I had lent out
@@ -149,28 +198,35 @@ rather than one I was sharing.
 
 The stuck-approval problem from version one had a harder half that I did not notice at first.
 
-Claude Code runs inside tmux. Its normal permission requests can be relayed out as structured
-events, and those are easy to show on screen. But some questions exist only as dialogs drawn in the
-terminal: the warnings and trust questions Claude Code shows at startup, for example. Nothing announces them. If nobody is
-looking at that terminal, the session just stops.
+Claude Code used to run inside tmux, in a terminal nobody looked at. Its normal permission requests
+could be relayed out as structured events, and those were easy to show on screen. But some questions
+existed only as dialogs drawn in the terminal: the warnings and trust questions Claude Code shows at
+startup, for example. Nothing announced them. If nobody was looking at that terminal, the session
+just stopped.
 
-So {NAME} reads the terminal. Once a second it captures the tmux pane and runs it through one
-generic parser that recognises a dialog and its options. I checked that parser against 66 real
-captures. A recognised dialog becomes the same card as any other approval.
-
-Answering one is deliberately timid. It uses arrow keys only, re-reads the pane before pressing
-Enter to confirm the highlight is where it thinks it is, and never chooses an "always" or "don't
-ask again" option. A spoken yes means yes to this one thing.
+So {NAME} read the terminal. Once a second it captured the tmux pane and ran it through one
+generic parser that recognised a dialog and its options. I checked that parser against 66 real
+captures. A recognised dialog became the same card as any other approval. Answering one was
+deliberately timid: arrow keys only, a second look at the pane before pressing Enter, and never an
+"always" or "don't ask again" option.
 
 The parser also fixed a bug that I am glad I found on my own machine. An earlier version answered
 "approve" by picking the first option, because the first option is almost always the yes. The
 folder-trust dialog lists "No, exit" first. Approving it made Claude Code quit.
 
-With the app grants that the hands need the first time they touch an app, that makes three places a
-question can come from. They all turn into one card, with one chime and one short spoken prompt,
-and the answer is routed back the way the question came.
+It worked, but every start still began with a warning card I had to approve. Now that whole
+layer is gone. Claude Code runs headless through
+Anthropic's Agent SDK, on the same Claude plan, and its permission requests arrive as real requests,
+one at a time, each waiting for its answer. Codex, the second agent, asks the same way through its
+app server when it wants to go beyond the folders it is sandboxed to. Nothing is read off a screen
+any more, and "stop" really stops.
 
-<ApprovalRoutes caption="Three sources, one card. The answer goes back through the route its question arrived on." />
+What stayed is the rule. A question can come from two places: the agent, when it wants to use a
+tool, and {NAME} itself, the first time the hands touch an app. Both turn into one card, with one chime and one
+short spoken prompt, and the answer is routed back the way the question came. Approve always means
+yes to this one thing, never "always".
+
+<ApprovalRoutes caption="Two sources, one card: the agent, Claude Code or Codex, and Lookma itself. The answer goes back the way its question came." />
 
 ## Saying yes out loud
 
@@ -213,7 +269,7 @@ opposite directions.
 In the first, an echo of the assistant's own speech was heard as "Sure." while it was still asking
 its question. That was treated as a decline of the startup card, and Claude Code exited. I had
 guarded approvals carefully and left declines open, on the theory that "no" is the safe answer. It
-is safe, but a wrong "no" still ends your session. Declines now pass the same checks.
+is safe, but a wrong "no" still costs you something you wanted. Declines now pass the same checks.
 
 In the second, I said a real "yes, I approve" while the assistant was still talking, and an
 over-strict rule refused it because it overlapped the assistant's speech. The fix was to narrow what
@@ -221,69 +277,117 @@ counts as suspicious: only an answer that arrives while the assistant itself is 
 phrase. And then to make that window nearly empty, by having the assistant ask just “…Approve?”
 instead of reading the whole request aloud.
 
-The microphone is always on while {NAME} runs, unless you pause it, so the gate has to hold up against a whole room:
-the assistant's own echo, people talking to each other, the TV. Two things keep that manageable.
-The assistant gets a reply only when a turn's transcript means something, so a cough or an "um"
-never reaches the model. And it is told to stay silent for speech that is not meant for it. The
-gate itself stays exactly as strict. Hearing you speak says nothing about what you meant to say.
-
 <Callout type="tip" title="What I would tell someone building voice consent">
 	Do not let the speech model be the judge. Give it a phrase to listen for, check the transcript
 	yourself, tie the answer to what was on screen and when, and test the refusals at least as hard
 	as the approvals.
 </Callout>
 
-## One assistant
+## It heard too much
 
-There are two models here: one for the voice, and Claude Code doing the work. Early on that showed.
+At launch, the microphone was always on while {NAME} ran, unless you paused it. Then it
+overheard me talking *about* {NAME}, not to it, saying the voice "doesn't feel like a real
+conversation", and it set out to send a Slack message to someone it had invented. I hit pause
+about ten seconds in.
+
+The model was doing its best with what it heard. The problem was that it heard everything:
+whatever was said in the room, meant for it or not, even its own voice coming back through the
+speakers. Every
+sound became a question it had to answer, *was that for me?*, and sometimes it guessed wrong.
+
+{art({
+	name: 'talking',
+	alt: "Three timelines of the fn key and the microphone. Hold fn: the microphone opens about 150 ms after the press and closes when you let go, and your words go in. Tap fn: the microphone stays open for a hands-free conversation, until 20 seconds of quiet or another tap. Always listening, the option --talk always: the microphone is open until you pause, and a tap stops the voice mid-sentence.",
+})}
+
+So now it waits for my finger. I hold fn and talk, like a walkie-talkie, and when I let go it knows
+I am done. No more guessing whether a pause meant "finished" or "thinking". Pressing fn while it
+talks cuts it off mid-sentence. When I want my hands free, a quick tap opens a conversation that
+stays open until 20 seconds of quiet, and quiet means nobody talking, no work running and no card
+waiting, so it does not close on me halfway through a task. While the key is up the microphone is
+off and nothing goes to OpenAI, but the voice session stays warm, so it can still speak up the
+moment the work has news. Always listening is still there as an option, `--talk always`.
+
+There used to be a filter that only let a turn through to the model when its transcript "meant
+something", so a cough or an "um" never reached it. It is gone. The voice now hears the audio and
+decides for itself whether speech was meant for it; when it was not, it passes and says nothing.
+With the key, that question mostly disappears. The consent gate stays exactly as strict either way.
+Hearing you speak says nothing about what you meant to say.
+
+One trap if you try it: fn is also the Globe key, and macOS may use it to switch input sources. If
+you type in more than one language, set "Press Globe key to" to "Do Nothing" in System Settings,
+and use Control-Space to switch. {NAME}'s setup check warns you if it is not.
+
+## It talked like a machine
+
+There are two models here: one for the voice, and an agent doing the work. Early on that showed.
 The voice would report what "Claude says", like a receptionist relaying messages from the back
-office.
+office. It now speaks in the first person and never names the agent. You hear one assistant that
+says "I found it" and "I need your approval for this".
 
-It now speaks in the first person and never names the executor. You hear one assistant that says
-"I found it" and "I need your approval for this". It is a small thing to implement and it removes a
-layer you would otherwise keep thinking about.
+Getting the manners right took longer. At launch, the voice was a terse butler: one sentence or
+nothing, and silent while it worked. In daily
+use it did not feel like talking to a person. I would say "open Maps" and get about fifteen seconds
+of silence before "I've opened Maps".
+
+I rebuilt the voice around one simple idea: it owes me things. A reply to everything I say, and
+every bit of news from the work, and a debt only counts as paid once I actually heard a true answer.
+So now it says "OK, opening Maps" right away, and tells me what happened when it happens. If a reply
+gets lost, it says it again later.
+
+Not everything went smoothly. For a day, its sentences kept stopping halfway through a word. It
+turned out a limit I had set on reply length counted the
+audio too, so any two-sentence answer simply ran out. The limit is now only a safety net, far above
+anything it should say. And it still sometimes says it will do something and then does not start
+it. I am watching that one before I decide how to fix it.
 
 ## How it fits together
 
-<OperatorArchitecture caption="The core is the only place that decides. Everything else reports to it or acts for it." />
+<OperatorArchitecture caption="The core is the only place that decides. The agent and the voice plug in at either end; everything else reports to the core or acts for it." />
 
-There are four parts.
+There are three parts, and two plug-ins.
 
 - **A resident Node core.** It is the only component that makes decisions. It holds whose turn it
   is, what has focus, whether you are busy, the open cards, and the pipeline that every hands step
   goes through.
-- **A Swift app.** It owns the click-through overlay window, the hands, the idle signal, and a menu
-  bar item with Pause, Type a Request… and Quit. ⌃⌥P pauses everything from any app, the microphone included.
+- **A Swift app.** It owns the click-through overlay window, the hands, the idle signal, the fn
+  key, and a menu bar item with Pause, Type a Request… and Quit. ⌃⌥P pauses everything from any
+  app, the microphone included.
 - **The overlay page inside that app.** A web page that draws captions, marks and cards, and runs
-  the voice client over WebRTC.
-- **An executor adapter.** Claude Code, headless through the Agent SDK, or Codex through its app
-  server. Each is a plug-in folder.
+  the voice client.
 
-The contract between the core and an executor is small on purpose, so a different one can take the
-place of Claude Code. Codex was the first to do so.
+{art({
+	name: 'plug-ins',
+	alt: "Lookma in the middle, the same whatever is plugged in. On the left, the voice plug-in in its own folder. On the right, the agent plug-in in its own folder, driven with start, prompt, interrupt and close. The agent touches the screen only through Lookma's hands.",
+})}
 
-Everything listens on 127.0.0.1 only. Apart from Claude Code itself, which also sees screenshots of
-the app it works in, the one thing that leaves the machine is voice: your audio and the text it
-reads to you go to OpenAI while {NAME} runs and is not paused.
+I wanted to use Codex as well as Claude Code, so {NAME} now works with either:
+`lookma --agent codex`. Doing it properly meant making both ends plug-ins. The agent that does the
+work is one folder: Claude Code, headless through the Agent SDK, or Codex through its app server,
+sandboxed to the folders you pass. The voice I talk to is another folder, OpenAI Realtime today.
+The contract with an agent is small on purpose: start, prompt, interrupt, close, and a few events
+coming back. The agent touches the screen only through {NAME}'s hands, so everything above works the
+same whichever one is plugged in. Adding another agent or another voice should be a folder and a
+page of docs.
+
+Everything listens on 127.0.0.1 only. Apart from the agent itself, which sees the element lists and
+the occasional screenshot of the app it works in, the one thing that leaves the machine is voice:
+your audio while the microphone is open, and the text it reads to you, go to OpenAI.
 
 ## Where it stands
 
 I use {NAME} every day, and it is open source. The [launch post](/blog/introducing-lookma/) has the
 quick start, and the code is at [github.com/liuyoshio/lookma](https://github.com/liuyoshio/lookma).
 
-Its limits today:
-
-- macOS only, and only the main display;
-- no drag and no right-click yet;
-- 10 to 20 seconds for a multi-step task;
-- it needs Claude Code or Codex;
-- voice needs an OpenAI key, though typing works without one.
+It is still rough in places. It runs on macOS only, and only on the main display. A drag works
+inside one app, not from one app to another. Voice needs an OpenAI key, though typing works without
+one. And a task of a few steps still takes several seconds, mostly the agent thinking.
 
 When I started, I thought the hard part of a visible agent would be the agent. The model was
 capable from the first day. The work was in everything around it: showing where it is about to act,
-waiting when I am in the middle of something, bringing its questions to where I am, and being
-careful about what it takes for an answer. Those are the same things I would want from a person
-using my computer while I am in the room.
+waiting when I am in the middle of something, bringing its questions to where I am, being careful
+about what it takes for an answer, listening only when I mean it, and answering like a person.
+Those are the same things I would want from a person using my computer while I am in the room.
 
 If you try it, I would love to hear where it breaks for you. Open an issue; that is how the next
 post gets written.
