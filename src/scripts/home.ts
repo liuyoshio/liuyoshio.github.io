@@ -219,6 +219,64 @@ function initHoverScramble(home: HTMLElement, reduceMotion: boolean) {
 	}
 }
 
+/* ------------------------------------------------------------------ mascot */
+
+function initMascot(home: HTMLElement, reduceMotion: boolean) {
+	const cat = home.querySelector<HTMLButtonElement>('.mascot');
+	if (!cat) return;
+
+	const hop = () => {
+		if (reduceMotion) return;
+		cat.classList.remove('hop');
+		void cat.offsetWidth; // restart the animation
+		cat.classList.add('hop');
+	};
+	cat.addEventListener('animationend', (event) => {
+		if (event.animationName === 'mascot-hop') cat.classList.remove('hop');
+	});
+
+	cat.addEventListener('click', () => {
+		hop();
+		home.dispatchEvent(new CustomEvent('mascot:pet'));
+	});
+	home.addEventListener('mascot:hop', hop);
+
+	if (reduceMotion) return;
+
+	// Blink every few seconds, sometimes twice.
+	const blink = () => {
+		cat.classList.add('blink');
+		setTimeout(() => cat.classList.remove('blink'), 130);
+	};
+	const scheduleBlink = () => {
+		setTimeout(() => {
+			blink();
+			if (Math.random() < 0.3) setTimeout(blink, 260);
+			scheduleBlink();
+		}, 2200 + Math.random() * 3800);
+	};
+	scheduleBlink();
+
+	// Eyes follow the pointer, one pixel in each direction.
+	let frame = 0;
+	window.addEventListener(
+		'pointermove',
+		(event) => {
+			if (frame) return;
+			frame = requestAnimationFrame(() => {
+				frame = 0;
+				const box = cat.getBoundingClientRect();
+				const dx = event.clientX - (box.left + box.width / 2);
+				const dy = event.clientY - (box.top + box.height / 2);
+				const step = (d: number, dead: number) => (Math.abs(d) < dead ? 0 : Math.sign(d));
+				cat.style.setProperty('--ex', `${step(dx, 40)}px`);
+				cat.style.setProperty('--ey', `${step(dy, 60)}px`);
+			});
+		},
+		{ passive: true },
+	);
+}
+
 /* ------------------------------------------------------------- keyboard nav */
 
 function isTyping(target: EventTarget | null) {
@@ -435,6 +493,13 @@ function initShell(home: HTMLElement, data: TermData) {
 		date: { help: 'print the date', run: () => [line(new Date().toString())] },
 		echo: { help: 'print text', run: (args) => [line(args.join(' '))] },
 		clear: { help: 'clear the screen', run: () => 'clear' },
+		pet: {
+			help: 'pet the cat',
+			run: () => {
+				home.dispatchEvent(new CustomEvent('mascot:hop'));
+				return [purr()];
+			},
+		},
 		// Hidden extras.
 		sudo: { help: '', run: () => [styled('err', `${data.name.split(' ')[0].toLowerCase()} is not in the sudoers file. This incident will be reported.`)] },
 		exit: { help: '', run: () => [line(t('there is no exit. there is only ', 'dim'), run('cd blog'), t('.', 'dim'))] },
@@ -443,6 +508,16 @@ function initShell(home: HTMLElement, data: TermData) {
 		rm: { help: '', run: () => [styled('err', 'rm: permission denied. nice try.')] },
 		vim: { help: '', run: () => [line(t('you are already in it. ', 'dim'), t(':q', 'hl'), t(' will not help.', 'dim'))] },
 	};
+	const PURRS = ['=^.^=  purr…', 'mrrp?', '=^ω^=  meow!', '*headbutts your cursor*', 'the cat approves of this blog.', '*slow blink*'];
+	let purrs = 0;
+	function purr(): Line {
+		return line(t(PURRS[purrs++ % PURRS.length], 'ok'));
+	}
+	home.addEventListener('mascot:pet', () => {
+		print([styled('echo', t('jiawei', 'ps1'), t('@liu', 'ps1'), t(':~', 'path'), t('$ ', 'sig'), 'pet'), purr()]);
+		form.scrollIntoView({ block: 'nearest' });
+	});
+
 	const HIDDEN = new Set(['sudo', 'exit', 'pwd', 'uname', 'rm', 'vim']);
 	commands.man = { help: '', run: commands.help.run };
 	commands.ll = { help: '', run: commands.ls.run };
@@ -589,6 +664,7 @@ if (home && dataEl) {
 	initEntrance(home, animate);
 	if (!reduceMotion) initSpotlight();
 	initHoverScramble(home, reduceMotion);
+	initMascot(home, reduceMotion);
 	initShell(home, data);
 	initKeys(home);
 	initClock(home);

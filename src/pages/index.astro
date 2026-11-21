@@ -1,6 +1,7 @@
 ---
 import { GITHUB_URL, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 import { projects } from '../data/projects';
+import Mascot from '../components/Mascot.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getPosts, postUrl, readingMinutes } from '../lib/posts';
 import '../styles/home.css';
@@ -19,6 +20,10 @@ const dirName = (title: string) =>
 		.replace(/^-+|-+$/g, '');
 
 const lookma = postUrl('introducing-lookma');
+
+/** "v2026.11": the month of the newest post (or of the build, before the first post). */
+const latest = posts[0]?.data.updatedDate ?? posts[0]?.data.pubDate ?? new Date();
+const version = `v${latest.getUTCFullYear()}.${String(latest.getUTCMonth() + 1).padStart(2, '0')}`;
 
 /** Lines for `cat now.txt`, shared by the page and the interactive prompt. */
 const now = [
@@ -82,10 +87,18 @@ const PS1 = { user: 'jiawei', host: 'liu' };
 				<span class="typed">whoami</span>
 			</p>
 
-			<h1 id="hero-name" class="name" data-anim="scramble">
-				<span class="sr-only">{SITE_TITLE}</span>
-				<span class="scr" aria-hidden="true">{SITE_TITLE}</span><span class="cursor" aria-hidden="true"></span>
-			</h1>
+			<div class="welcome" data-anim="scramble">
+				<Mascot />
+				<div class="welcome-text">
+					<h1 id="hero-name" class="name">
+						<span class="sr-only">{SITE_TITLE}</span>
+						<span class="scr" aria-hidden="true">{SITE_TITLE}</span>
+						<span class="ver" aria-hidden="true">{version}</span>
+					</h1>
+					<p class="welcome-line">AI agents &amp; ML systems · open source</p>
+					<p class="welcome-line">~/liuyoshio.github.io</p>
+				</div>
+			</div>
 
 			<p class="tagline" data-anim="fade">
 				I like making the computer do more of the work. Mostly that means building things,

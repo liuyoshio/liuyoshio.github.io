@@ -1,0 +1,64 @@
+---
+/**
+ * The site mascot: a small pixel cat, drawn as an SVG on a 13 x 10 grid
+ * (one unit = one pixel). Animated by src/styles/home.css and src/scripts/home.ts:
+ * it blinks, wags its tail, follows the pointer with its eyes and hops when clicked.
+ *
+ * To redraw it, edit the rows below: `#` is a body pixel, `.` is empty.
+ */
+
+const BODY = [
+	'.#.......#...',
+	'.##.....##...',
+	'.#########...',
+	'###########..',
+	'###########..',
+	'###########..',
+	'###########..',
+	'###########..',
+	'.#########...',
+	'.#.#...#.#...',
+];
+
+/** Eye pixels [x, y], painted in the background color over the body. */
+const EYES: [number, number][] = [
+	[3, 4],
+	[3, 5],
+	[7, 4],
+	[7, 5],
+];
+
+/** Two tail frames that alternate to make it wag. */
+const TAIL_A: [number, number][] = [
+	[11, 6],
+	[12, 5],
+	[12, 4],
+];
+const TAIL_B: [number, number][] = [
+	[11, 6],
+	[12, 6],
+	[12, 7],
+];
+
+/** Merge each row's runs of `#` into one rect, so edges render without seams. */
+const runs: { x: number; y: number; w: number }[] = [];
+BODY.forEach((row, y) => {
+	for (const match of row.matchAll(/#+/g)) runs.push({ x: match.index ?? 0, y, w: match[0].length });
+});
+
+const W = BODY[0].length;
+const H = BODY.length;
+---
+
+<button type="button" class="mascot" aria-label="Pet the cat" title="Pet the cat">
+	<svg viewBox={`0 0 ${W} ${H}`} width={W * 7} height={H * 7} shape-rendering="crispEdges" aria-hidden="true">
+		<g class="mascot-body">
+			{runs.map(({ x, y, w }) => <rect x={x} y={y} width={w} height="1" />)}
+		</g>
+		<g class="mascot-tail mascot-tail-a">{TAIL_A.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
+		<g class="mascot-tail mascot-tail-b">{TAIL_B.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
+		<g class="mascot-look">
+			<g class="mascot-eyes">{EYES.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
+		</g>
+	</svg>
+</button>

@@ -127,21 +127,179 @@
 	padding-top: 0.5rem;
 }
 
+/* Welcome block: pixel mascot + three lines, like a CLI's start-up banner. */
+.home .welcome {
+	display: flex;
+	align-items: center;
+	gap: 2.5ch;
+	margin: 1rem 0 1.75rem;
+}
+
+.home .welcome-text {
+	min-width: 0;
+}
+
 .home .name {
-	margin: 0.5rem 0 1.25rem;
+	margin: 0;
 	font-family: var(--mono);
-	font-size: clamp(2.375rem, 1.5rem + 4.6vw, 4.25rem);
+	font-size: 1.125rem;
 	font-weight: 700;
-	line-height: 1.05;
-	letter-spacing: -0.035em;
+	line-height: 1.5;
+	letter-spacing: 0;
 	white-space: nowrap;
 }
 
-.home .name .cursor {
-	width: 0.52em;
-	height: 0.9em;
-	margin-left: 0.08em;
-	vertical-align: -0.08em;
+.home .name .ver {
+	margin-left: 1ch;
+	color: var(--dim);
+	font-weight: 400;
+}
+
+.home .welcome-line {
+	color: var(--text-muted);
+	line-height: 1.6;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ---------- Mascot ---------- */
+
+.home .mascot {
+	flex: none;
+	display: block;
+	margin: 0;
+	padding: 0.25rem;
+	margin-left: -0.25rem;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	cursor: pointer;
+	color: var(--accent);
+	-webkit-tap-highlight-color: transparent;
+}
+
+.home .mascot svg {
+	display: block;
+	width: 91px;
+	height: 70px;
+	overflow: visible;
+	animation: mascot-idle 2.4s steps(1, end) infinite;
+}
+
+.home .mascot-body,
+.home .mascot-tail {
+	fill: currentColor;
+}
+
+.home .mascot-eyes {
+	fill: var(--bg);
+	transform-box: fill-box;
+	transform-origin: center;
+	transition: transform 0.08s steps(1, end);
+}
+
+.home .mascot.blink .mascot-eyes {
+	transform: scaleY(0.25);
+}
+
+.home .mascot-look {
+	transform: translate(var(--ex, 0px), var(--ey, 0px));
+}
+
+.home .mascot-tail-a {
+	animation: mascot-tail 0.9s steps(1, end) infinite;
+}
+
+.home .mascot-tail-b {
+	animation: mascot-tail 0.9s steps(1, end) infinite reverse;
+}
+
+.home .mascot:hover .mascot-tail-a,
+.home .mascot:hover .mascot-tail-b {
+	animation-duration: 0.36s;
+}
+
+.home .mascot.hop svg {
+	animation: mascot-hop 0.5s steps(5, end);
+}
+
+.home .mascot:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+@keyframes mascot-idle {
+	0%,
+	100% {
+		transform: none;
+	}
+	50% {
+		transform: translateY(1px);
+	}
+}
+
+@keyframes mascot-tail {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+
+@keyframes mascot-hop {
+	0%,
+	100% {
+		transform: none;
+	}
+	40% {
+		transform: translateY(-14px);
+	}
+	70% {
+		transform: translateY(-4px);
+	}
+}
+
+/* Boot: the cat appears row by row. */
+@keyframes mascot-pixels {
+	from {
+		clip-path: inset(0 0 100% 0);
+	}
+	to {
+		clip-path: inset(0 0 0 0);
+	}
+}
+
+.home.anim .welcome.shown .mascot svg {
+	animation:
+		mascot-pixels 0.5s steps(10, end),
+		mascot-idle 2.4s steps(1, end) 0.5s infinite;
+}
+
+.home.anim .welcome.shown .mascot.hop svg {
+	animation: mascot-hop 0.5s steps(5, end);
+}
+
+@media (max-width: 39.99rem) {
+	.home .welcome {
+		gap: 2ch;
+	}
+
+	.home .mascot svg {
+		width: 65px;
+		height: 50px;
+	}
+
+	.home .name {
+		font-size: 1rem;
+	}
+
+	.home .welcome-line {
+		font-size: 0.8125rem;
+		white-space: normal;
+	}
 }
 
 .home .tagline {
@@ -658,8 +816,14 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.home .cursor,
-	.home .hint {
-		animation: none;
+	.home .hint,
+	.home .mascot svg,
+	.home .mascot-tail-a {
+		animation: none !important;
+	}
+
+	.home .mascot-tail-b {
+		display: none;
 	}
 
 	.home .row::before,
