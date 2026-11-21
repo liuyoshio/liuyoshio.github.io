@@ -1,0 +1,671 @@
+/*
+  Home page: a terminal session. Everything is scoped under `.home` (or the two
+  background layers) because the prompt's output is built at runtime by
+  src/scripts/home.ts and would not get Astro's scoped-style attributes.
+
+  Motion: `.home.anim` is set before first paint (inline script in index.astro) only
+  when the reader has not asked for reduced motion. It hides the parts that animate in;
+  home.ts reveals them and sets `.ready`. If home.ts never runs, the fail-safe
+  animation below reveals everything after 2.5s.
+*/
+
+.home {
+	--page-width: 48rem;
+	--dim: var(--text-faint);
+	--grid: color-mix(in srgb, var(--text) 13%, transparent);
+	font-family: var(--mono);
+	font-size: 0.9375rem;
+	line-height: 1.65;
+	font-variant-ligatures: none;
+}
+
+.home kbd {
+	padding: 0 0.3em;
+	border: 1px solid var(--border-strong);
+	border-radius: 4px;
+	font-family: var(--mono);
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+/* ---------- Background: dot grid with a spotlight that follows the pointer ---------- */
+
+.grid-bg,
+.grid-glow {
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	background-size: 24px 24px;
+	background-position: center top;
+}
+
+.grid-bg {
+	background-image: radial-gradient(circle, color-mix(in srgb, var(--text) 14%, transparent) 1px, transparent 1.4px);
+	-webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, #000 10%, transparent 75%);
+	mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, #000 10%, transparent 75%);
+}
+
+.grid-glow {
+	--mx: 50%;
+	--my: 22%;
+	background-image: radial-gradient(circle, var(--accent) 1.1px, transparent 1.6px);
+	-webkit-mask-image: radial-gradient(240px circle at var(--mx) var(--my), #000, transparent 70%);
+	mask-image: radial-gradient(240px circle at var(--mx) var(--my), #000, transparent 70%);
+	opacity: 0;
+	transition: opacity 0.6s ease;
+}
+
+.grid-glow.lit {
+	opacity: 0.75;
+}
+
+/* ---------- Prompt pieces ---------- */
+
+.home .cmd {
+	margin: 0;
+	color: var(--text);
+	font-family: var(--mono);
+	font-size: 0.9375rem;
+	font-weight: 500;
+	letter-spacing: 0;
+	line-height: 1.65;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.home .ps1 {
+	color: var(--term-green);
+	font-weight: 600;
+}
+
+.home .path {
+	color: var(--accent);
+	font-weight: 600;
+}
+
+.home .sig {
+	margin-right: 0.6ch;
+	color: var(--dim);
+}
+
+.home .path + .sig {
+	margin-left: 0.15ch;
+}
+
+.home .cursor {
+	display: inline-block;
+	width: 0.6em;
+	height: 1.1em;
+	margin-left: 0.12em;
+	vertical-align: -0.16em;
+	background: var(--accent);
+	animation: home-blink 1.1s steps(1, end) infinite;
+}
+
+.home .typing .cursor-inline::after,
+.home .cmd.typing::after {
+	content: '';
+	display: inline-block;
+	width: 0.55em;
+	height: 1.05em;
+	margin-left: 0.1em;
+	vertical-align: -0.16em;
+	background: var(--accent);
+}
+
+@keyframes home-blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+/* ---------- Hero ---------- */
+
+.hero {
+	padding-top: 0.5rem;
+}
+
+.home .name {
+	margin: 0.5rem 0 1.25rem;
+	font-family: var(--mono);
+	font-size: clamp(2.375rem, 1.5rem + 4.6vw, 4.25rem);
+	font-weight: 700;
+	line-height: 1.05;
+	letter-spacing: -0.035em;
+	white-space: nowrap;
+}
+
+.home .name .cursor {
+	width: 0.52em;
+	height: 0.9em;
+	margin-left: 0.08em;
+	vertical-align: -0.08em;
+}
+
+.home .tagline {
+	max-width: 40rem;
+	margin-bottom: 2rem;
+	color: var(--text-muted);
+	font-size: 1rem;
+	line-height: 1.75;
+}
+
+.home .now {
+	margin: 0.5rem 0 2rem;
+}
+
+.home .now > div {
+	display: grid;
+	grid-template-columns: 8ch 1fr;
+	gap: 0 1ch;
+	padding-block: 0.15rem;
+}
+
+.home .now dt {
+	color: var(--term-yellow);
+}
+
+.home .now dt::after {
+	content: ':';
+	color: var(--dim);
+}
+
+.home .now dd {
+	margin: 0;
+	color: var(--text-muted);
+}
+
+.home a {
+	color: var(--accent);
+	text-decoration: none;
+	background-image: linear-gradient(currentColor, currentColor);
+	background-size: 0% 1px;
+	background-position: 0 100%;
+	background-repeat: no-repeat;
+	transition: background-size 0.25s ease, color 0.15s ease;
+}
+
+.home a:hover {
+	color: var(--accent-strong);
+	background-size: 100% 1px;
+}
+
+.home .now a,
+.home .tagline a {
+	background-size: 100% 1px;
+	background-image: linear-gradient(color-mix(in srgb, currentColor 40%, transparent), color-mix(in srgb, currentColor 40%, transparent));
+}
+
+/* ---------- Interactive prompt ---------- */
+
+.home .shell {
+	margin-bottom: 0.5rem;
+	cursor: text;
+}
+
+.home .shell-log {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.home .shell-log:empty {
+	display: none;
+}
+
+.home .shell-log li {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: var(--text-muted);
+}
+
+.home .shell-log .echo {
+	color: var(--text);
+	margin-top: 0.35rem;
+}
+
+.home .shell-log .echo:first-child {
+	margin-top: 0;
+}
+
+.home .shell-log .err {
+	color: var(--term-red);
+}
+
+.home .shell-log .ok {
+	color: var(--term-green);
+}
+
+.home .shell-log .dim {
+	color: var(--dim);
+}
+
+.home .shell-log .hl {
+	color: var(--text);
+}
+
+.home .shell-log .num {
+	color: var(--term-yellow);
+}
+
+.home .prompt {
+	scroll-margin-bottom: 4.5rem;
+	display: flex;
+	align-items: baseline;
+	min-width: 0;
+}
+
+.home .prompt-label {
+	flex: none;
+	white-space: nowrap;
+	cursor: text;
+}
+
+.home .prompt-field {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+	display: flex;
+}
+
+.home .prompt-input {
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--text);
+	font: inherit;
+	/* 16px or more keeps iOS from zooming in on focus. */
+	font-size: max(1rem, 16px);
+	line-height: inherit;
+	caret-color: var(--accent);
+	caret-shape: block;
+}
+
+.home .prompt-ghost {
+	position: absolute;
+	inset: 0 auto 0 0;
+	display: flex;
+	align-items: center;
+	gap: 1.25ch;
+	pointer-events: none;
+	white-space: nowrap;
+}
+
+.home .prompt-ghost .cursor {
+	margin-left: 0;
+}
+
+.home .hint {
+	color: var(--dim);
+	font-size: 0.875rem;
+	animation: home-hint 3.2s ease-in-out infinite;
+}
+
+@keyframes home-hint {
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+.home .prompt.has-value .prompt-ghost,
+.home .prompt:focus-within .prompt-ghost {
+	display: none;
+}
+
+.home .prompt:focus-within .prompt-label .sig {
+	color: var(--accent);
+}
+
+/* ---------- Sections (ls output) ---------- */
+
+.home .block {
+	margin-top: 3.75rem;
+}
+
+.home .block-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.75rem;
+	padding-bottom: 0.625rem;
+	border-bottom: 1px dashed var(--border-strong);
+}
+
+.home .block-head .cmd {
+	min-width: 0;
+}
+
+.home .more {
+	flex: none;
+	color: var(--text-muted);
+	font-size: 0.875rem;
+}
+
+.home .more:hover {
+	color: var(--accent);
+}
+
+.home .rows {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.home .row {
+	position: relative;
+	display: grid;
+	grid-template-columns: 1.5ch 11ch minmax(0, 1fr) auto;
+	gap: 0 1.25ch;
+	align-items: baseline;
+	padding: 0.875rem 0.75rem 0.875rem 0.25rem;
+	margin-inline: -0.25rem -0.75rem;
+	border-radius: 6px;
+	isolation: isolate;
+}
+
+/* Highlight bar that sweeps in from the left on hover / keyboard focus. */
+.home .row::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	background: var(--bg-subtle);
+	box-shadow: inset 2px 0 0 var(--accent);
+	transform: scaleX(0);
+	transform-origin: left;
+	opacity: 0;
+	transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.2s ease;
+}
+
+.home .row:hover::before,
+.home .row:focus-within::before {
+	transform: scaleX(1);
+	opacity: 1;
+}
+
+.home .caret {
+	color: var(--accent);
+	font-weight: 700;
+	opacity: 0;
+	transform: translateX(-0.5ch);
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.home .row:hover .caret,
+.home .row:focus-within .caret {
+	opacity: 1;
+	transform: none;
+}
+
+.home .row-date {
+	color: var(--dim);
+	font-size: 0.875rem;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.home .row-main {
+	min-width: 0;
+}
+
+.home .row-title {
+	margin: 0;
+	font-family: var(--mono);
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.5;
+	letter-spacing: -0.01em;
+	text-wrap: pretty;
+}
+
+.home .row-title a {
+	color: var(--text);
+	background: none;
+}
+
+/* The title link covers the whole row. */
+.home .row-title a::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 6px;
+}
+
+.home .row-title a:focus-visible {
+	outline: none;
+}
+
+.home .row:has(.row-title a:focus-visible) {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.home .row:hover .row-title a,
+.home .row:focus-within .row-title a {
+	color: var(--accent);
+}
+
+.home .row-title .badge {
+	margin-left: 0.5rem;
+	font-family: var(--mono);
+}
+
+.home .row-desc {
+	margin-top: 0.25rem;
+	color: var(--text-muted);
+	font-size: 0.875rem;
+	line-height: 1.6;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.home .row-meta {
+	color: var(--dim);
+	font-size: 0.8125rem;
+	white-space: nowrap;
+}
+
+.home .row-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 1.25ch;
+	margin-top: 0.5rem;
+	font-size: 0.8125rem;
+}
+
+/* Secondary links sit above the row-wide title link. */
+.home .row-links a {
+	position: relative;
+	z-index: 1;
+}
+
+.home .tag {
+	color: var(--dim);
+}
+
+.home .perm {
+	font-size: 0.8125rem;
+}
+
+.home .empty {
+	color: var(--text);
+}
+
+.home .empty .dim {
+	color: var(--dim);
+}
+
+/* ---------- Status line (vim-ish) ---------- */
+
+.home .statusline {
+	position: sticky;
+	bottom: 0.75rem;
+	z-index: 5;
+	display: flex;
+	align-items: stretch;
+	margin-top: 4.5rem;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	overflow: hidden;
+	background: color-mix(in srgb, var(--bg-subtle) 88%, transparent);
+	-webkit-backdrop-filter: blur(8px);
+	backdrop-filter: blur(8px);
+	color: var(--text-muted);
+	font-size: 0.75rem;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.home .statusline > span {
+	display: flex;
+	align-items: center;
+	gap: 0.4ch;
+	padding: 0.5rem 1.25ch;
+}
+
+.home .statusline .mode {
+	background: var(--accent);
+	color: var(--bg);
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	transition: background-color 0.2s ease;
+}
+
+.home .statusline.insert .mode {
+	background: var(--term-green);
+}
+
+.home .statusline .seg + .seg {
+	border-left: 1px solid var(--border);
+}
+
+.home .statusline .file {
+	color: var(--text);
+}
+
+.home .statusline .keys {
+	margin-left: auto;
+}
+
+.home .statusline kbd {
+	padding: 0.05em 0.35em;
+	font-size: 0.95em;
+}
+
+/* ---------- Small screens ---------- */
+
+@media (max-width: 39.99rem) {
+	.home .row {
+		grid-template-columns: minmax(0, 1fr) auto;
+		padding-left: 0.75rem;
+		margin-left: -0.75rem;
+	}
+
+	.home .caret {
+		display: none;
+	}
+
+	.home .row-date {
+		grid-row: 1;
+		grid-column: 1;
+		font-size: 0.8125rem;
+	}
+
+	.home .row-meta {
+		grid-row: 1;
+		grid-column: 2;
+	}
+
+	.home .row-main {
+		grid-column: 1 / -1;
+	}
+
+	.home .perm {
+		display: none;
+	}
+
+	.home .project .row-meta {
+		grid-column: 1 / -1;
+		font-size: 0.75rem;
+	}
+
+	.home .now > div {
+		grid-template-columns: 1fr;
+		padding-block: 0.3rem;
+	}
+
+	.home .hint-key,
+	.home .statusline .keys,
+	.home .statusline .file {
+		display: none;
+	}
+
+	.home .statusline {
+		position: static;
+	}
+
+	.home .statusline .clock {
+		margin-left: auto;
+	}
+}
+
+/* ---------- Entrance animation states ---------- */
+
+.home.anim [data-anim] {
+	opacity: 0;
+	animation: home-failsafe 0.4s ease 2.5s forwards;
+}
+
+.home.anim.ready [data-anim] {
+	animation: none;
+}
+
+.home.anim [data-anim].shown {
+	opacity: 1;
+}
+
+.home.anim [data-anim='fade'],
+.home.anim [data-anim='row'] {
+	transform: translateY(6px);
+	transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.home.anim [data-anim='fade'].shown,
+.home.anim [data-anim='row'].shown {
+	transform: none;
+}
+
+@keyframes home-failsafe {
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.home .cursor,
+	.home .hint {
+		animation: none;
+	}
+
+	.home .row::before,
+	.home .caret,
+	.home a,
+	.grid-glow {
+		transition: none;
+	}
+}

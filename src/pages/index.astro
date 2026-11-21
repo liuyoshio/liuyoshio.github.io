@@ -1,110 +1,256 @@
 ---
-import PostList from '../components/PostList.astro';
-import ProjectCard from '../components/ProjectCard.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import { GITHUB_URL, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 import { projects } from '../data/projects';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getPosts, postUrl } from '../lib/posts';
+import { getPosts, postUrl, readingMinutes } from '../lib/posts';
+import '../styles/home.css';
 
 const posts = await getPosts();
-const recent = posts.slice(0, 5);
+const recent = posts.slice(0, 6);
 const published = new Set(posts.map((post) => post.id));
 const featured = projects.filter((project) => project.featured);
+
+const isoDate = (date: Date) => date.toISOString().slice(0, 10);
+/** "Memory-Aware Agent Edge Serving" -> "memory-aware-agent-edge-serving". */
+const dirName = (title: string) =>
+	title
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+
+const lookma = postUrl('introducing-lookma');
+
+/** Lines for `cat now.txt`, shared by the page and the interactive prompt. */
+const now = [
+	{ key: 'now', text: 'Building Lookma, an open-source app that lets you talk to your Mac and watch an AI use your real apps.' },
+	{ key: 'before', text: 'LLM serving: fitting many agents onto one small GPU with llama.cpp.' },
+	{ key: 'here', text: 'Write-ups with enough detail that you can try things yourself.' },
+];
+
+const projectEntries = featured.map((project) => {
+	const postHref = project.post && published.has(project.post) ? postUrl(project.post) : undefined;
+	return {
+		project,
+		dir: dirName(project.title),
+		postHref,
+		primary: postHref ?? project.url ?? project.repo,
+	};
+});
+
+// Data for the interactive prompt (src/scripts/home.ts).
+const termData = {
+	name: SITE_TITLE,
+	github: GITHUB_URL,
+	now: now.map(({ key, text }) => `${key.padEnd(7)}${text}`),
+	posts: posts.map((post) => ({
+		id: post.id,
+		title: post.data.title,
+		desc: post.data.description,
+		date: isoDate(post.data.pubDate),
+		url: postUrl(post),
+	})),
+	projects: projectEntries.map(({ project, dir, primary }) => ({
+		id: dir,
+		title: project.title,
+		desc: project.description,
+		url: primary ?? '/projects/',
+		repo: project.repo,
+	})),
+};
+
+const PS1 = { user: 'jiawei', host: 'liu' };
 ---
 
 <BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-	<div class="container">
-		<section class="intro" aria-labelledby="intro-title">
-			<h1 id="intro-title" class="page-title">Hi, I'm Jiawei.</h1>
-			<p>
+	<div class="grid-bg" aria-hidden="true"></div>
+	<div class="grid-glow" aria-hidden="true"></div>
+
+	<div class="home container" id="home">
+		{
+			/* Hide the animated parts before first paint. If the module script never runs,
+			   a CSS fail-safe in home.css reveals everything after a moment. */
+		}
+		<script is:inline>
+			if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+				document.getElementById('home').classList.add('anim');
+			}
+		</script>
+
+		<section class="hero" aria-labelledby="hero-name" data-seq="hero">
+			<p class="cmd" data-anim="type" aria-hidden="true">
+				<span class="ps1"><span class="u">{PS1.user}</span>@{PS1.host}</span><span class="path">:~</span><span class="sig">$</span>
+				<span class="typed">whoami</span>
+			</p>
+
+			<h1 id="hero-name" class="name" data-anim="scramble">
+				<span class="sr-only">{SITE_TITLE}</span>
+				<span class="scr" aria-hidden="true">{SITE_TITLE}</span><span class="cursor" aria-hidden="true"></span>
+			</h1>
+
+			<p class="tagline" data-anim="fade">
 				I like making the computer do more of the work. Mostly that means building things,
 				breaking them, and writing down what I learned along the way.
 			</p>
-			<p>
-				Right now that's <a href="/blog/introducing-lookma/">Lookma</a>, an open-source app that
-				lets you talk to your Mac and watch an AI use your real apps. Before that I worked on LLM
-				serving: fitting many agents onto one small GPU with llama.cpp.
+
+			<p class="cmd" data-anim="type" aria-hidden="true">
+				<span class="ps1"><span class="u">{PS1.user}</span>@{PS1.host}</span><span class="path">:~</span><span class="sig">$</span>
+				<span class="typed">cat now.txt</span>
 			</p>
-			<p>
-				The write-ups live here, with enough detail that you can try things yourself.
-			</p>
+
+			<dl class="now">
+				<div data-anim="fade">
+					<dt>now</dt>
+					<dd>
+						Building <a href={lookma}>Lookma</a>, an open-source app that lets you talk to your Mac
+						and watch an AI use your real apps.
+					</dd>
+				</div>
+				{
+					now.slice(1).map(({ key, text }) => (
+						<div data-anim="fade">
+							<dt>{key}</dt>
+							<dd>{text}</dd>
+						</div>
+					))
+				}
+			</dl>
+
+			<div class="shell" data-anim="fade">
+				<ol class="shell-log" aria-live="polite" aria-label="Command output"></ol>
+				<form class="prompt" autocomplete="off" novalidate>
+					<label class="prompt-label" for="term-input">
+						<span class="sr-only">Type a command (try help)</span>
+						<span aria-hidden="true">
+							<span class="ps1"><span class="u">{PS1.user}</span>@{PS1.host}</span><span class="path">:~</span><span class="sig">$</span>
+						</span>
+					</label>
+					<span class="prompt-field">
+						<input
+							id="term-input"
+							class="prompt-input"
+							type="text"
+							enterkeyhint="go"
+							autocapitalize="off"
+							autocorrect="off"
+							spellcheck="false"
+							aria-describedby="term-hint"
+						/>
+						<span class="prompt-ghost" aria-hidden="true">
+							<span class="cursor"></span>
+							<span id="term-hint" class="hint">
+								type <kbd>help</kbd><span class="hint-key">, or press <kbd>/</kbd></span>
+							</span>
+						</span>
+					</span>
+				</form>
+			</div>
 		</section>
 
-		<section class="section" aria-labelledby="recent-title">
-			<div class="section-head">
-				<h2 id="recent-title" class="section-title">Recent posts</h2>
-				{posts.length > 0 && <a class="more-link" href="/blog/">All posts →</a>}
+		<section class="block" aria-labelledby="posts-title" data-seq="posts">
+			<div class="block-head">
+				<h2 id="posts-title" class="cmd" data-anim="type">
+					<span class="sr-only">Recent posts</span>
+					<span aria-hidden="true">
+						<span class="sig">$</span>
+						<span class="typed">ls -t posts/</span>
+					</span>
+				</h2>
+				{posts.length > 0 && <a class="more" href="/blog/">all posts <span aria-hidden="true">→</span></a>}
 			</div>
+
 			{
 				recent.length > 0 ? (
-					<PostList posts={recent} headingLevel={3} />
+					<ol class="rows">
+						{recent.map((post) => (
+							<li class="row" data-anim="row">
+								<span class="caret" aria-hidden="true">›</span>
+								<time class="row-date" datetime={isoDate(post.data.pubDate)}>
+									{isoDate(post.data.pubDate)}
+								</time>
+								<div class="row-main">
+									<h3 class="row-title">
+										<a class="nav-item" href={postUrl(post)} data-hover-scramble>
+											{post.data.title}
+										</a>
+										{post.data.draft && <span class="badge">Draft</span>}
+									</h3>
+									<p class="row-desc">{post.data.description}</p>
+								</div>
+								<span class="row-meta">{readingMinutes(post.body)} min</span>
+							</li>
+						))}
+					</ol>
 				) : (
-					<p class="empty">The first post is on its way.</p>
+					<p class="empty" data-anim="fade">
+						total 0 <span class="dim">— the first post is on its way.</span>
+					</p>
 				)
 			}
 		</section>
 
 		{
-			featured.length > 0 && (
-				<section class="section" aria-labelledby="projects-title">
-					<div class="section-head">
-						<h2 id="projects-title" class="section-title">Projects</h2>
-						<a class="more-link" href="/projects/">
-							All projects →
+			projectEntries.length > 0 && (
+				<section class="block" aria-labelledby="projects-title" data-seq="projects">
+					<div class="block-head">
+						<h2 id="projects-title" class="cmd" data-anim="type">
+							<span class="sr-only">Projects</span>
+							<span aria-hidden="true">
+								<span class="sig">$</span>
+								<span class="typed">ls -l projects/</span>
+							</span>
+						</h2>
+						<a class="more" href="/projects/">
+							all projects <span aria-hidden="true">→</span>
 						</a>
 					</div>
-					<ul class="project-strip">
-						{featured.map((project) => (
-							<li>
-								<ProjectCard
-									project={project}
-									postHref={
-										project.post && published.has(project.post) ? postUrl(project.post) : undefined
-									}
-									headingLevel={3}
-								/>
+					<ol class="rows">
+						{projectEntries.map(({ project, dir, postHref, primary }) => (
+							<li class="row project" data-anim="row">
+								<span class="caret" aria-hidden="true">›</span>
+								<span class="row-date perm" aria-hidden="true">
+									drwxr-xr-x
+								</span>
+								<div class="row-main">
+									<h3 class="row-title">
+										{primary ? (
+											<a class="nav-item" href={primary} data-hover-scramble>
+												{dir}/
+											</a>
+										) : (
+											<span>{dir}/</span>
+										)}
+										<span class="sr-only"> ({project.title})</span>
+									</h3>
+									<p class="row-desc">{project.description}</p>
+									<p class="row-links">
+										{project.tags.map((tag) => (
+											<span class="tag">#{tag.replace(/\s+/g, '-')}</span>
+										))}
+										{postHref && <a href={postHref}>[write-up]</a>}
+										{project.repo && <a href={project.repo}>[code]</a>}
+										{project.url && <a href={project.url}>[link]</a>}
+									</p>
+								</div>
+								{project.context && <span class="row-meta">{project.context}</span>}
 							</li>
 						))}
-					</ul>
+					</ol>
 				</section>
 			)
 		}
+
+		<div class="statusline" aria-hidden="true">
+			<span class="mode">NORMAL</span>
+			<span class="seg file">~/index.md</span>
+			<span class="seg">{posts.length} posts · {projectEntries.length} projects</span>
+			<span class="seg keys"><kbd>j</kbd>/<kbd>k</kbd> move <kbd>↵</kbd> open <kbd>/</kbd> prompt</span>
+			<span class="seg clock" data-clock>--:--</span>
+		</div>
 	</div>
+
+	<script type="application/json" id="term-data" set:html={JSON.stringify(termData).replace(/</g, '\\u003c')} />
 </BaseLayout>
 
-<style>
-	.intro {
-		margin-bottom: 3.5rem;
-	}
-
-	.intro p {
-		margin-top: 1rem;
-		max-width: 38rem;
-		color: var(--text-muted);
-		font-size: 1.0625rem;
-		line-height: 1.7;
-	}
-
-	.intro p:first-of-type {
-		margin-top: 1.25rem;
-		color: var(--text);
-		font-size: 1.125rem;
-	}
-
-	.section + .section {
-		margin-top: 3.5rem;
-	}
-
-	.empty {
-		color: var(--text-muted);
-	}
-
-	.project-strip {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-		gap: 1rem;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-</style>
+<script>
+	import '../scripts/home';
+</script>

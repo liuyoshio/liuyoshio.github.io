@@ -34,6 +34,11 @@
 	--warning: #845400;
 	--warning-bg: #fbf4e4;
 
+	/* Terminal accents (home page, header brand) */
+	--term-green: #1a7f37;
+	--term-red: #c62f3a;
+	--term-yellow: #8a6100;
+
 	/* Layout */
 	--gutter: 1rem;
 	--narrow: 44rem; /* lists and projects; close to the post text measure */
@@ -75,6 +80,10 @@
 		--tip-bg: #16231b;
 		--warning: #e3b341;
 		--warning-bg: #2a2316;
+
+		--term-green: #7ee787;
+		--term-red: #ff7b72;
+		--term-yellow: #e3b341;
 	}
 }
 
@@ -105,6 +114,10 @@
 	--tip-bg: #16231b;
 	--warning: #e3b341;
 	--warning-bg: #2a2316;
+
+	--term-green: #7ee787;
+	--term-red: #ff7b72;
+	--term-yellow: #e3b341;
 }
 
 /* ---------- Base ---------- */
