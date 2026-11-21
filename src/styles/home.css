@@ -6,7 +6,7 @@
   Motion: `.home.anim` is set before first paint (inline script in index.astro) only
   when the reader has not asked for reduced motion. It hides the parts that animate in;
   home.ts reveals them and sets `.ready`. If home.ts never runs, the fail-safe
-  animation below reveals everything after 2.5s.
+  animation below reveals everything after 1.5s.
 */
 
 .home {
@@ -348,7 +348,7 @@
 
 /* Opening animation. */
 .home.anim .window {
-	animation: window-open 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	animation: window-open 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 @keyframes window-open {
@@ -528,8 +528,8 @@
 
 .home.anim .welcome.shown .mascot svg {
 	animation:
-		mascot-pixels 0.5s steps(10, end),
-		mascot-idle 2.4s steps(1, end) 0.5s infinite;
+		mascot-pixels 0.32s steps(10, end),
+		mascot-idle 2.4s steps(1, end) 0.32s infinite;
 }
 
 .home.anim .welcome.shown .mascot.hop svg {
@@ -1039,7 +1039,7 @@
 
 .home.anim [data-anim] {
 	opacity: 0;
-	animation: home-failsafe 0.4s ease 2.5s forwards;
+	animation: home-failsafe 0.3s ease 1.5s forwards;
 }
 
 .home.anim.ready [data-anim] {
@@ -1053,7 +1053,7 @@
 .home.anim [data-anim='fade'],
 .home.anim [data-anim='row'] {
 	transform: translateY(6px);
-	transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+	transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .home.anim [data-anim='fade'].shown,

@@ -98,22 +98,22 @@ function initEntrance(home: HTMLElement, animate: boolean) {
 			if (!typed) return finish(el);
 			typed.textContent = '';
 			el.classList.add('shown', 'typing');
-			await sleep(140);
+			await sleep(60);
 			for (let i = 1; i <= text.length && !done(el); i++) {
 				typed.textContent = text.slice(0, i);
-				await sleep(38 + Math.random() * 46);
+				await sleep(16 + Math.random() * 20);
 			}
-			if (!done(el)) await sleep(180);
+			if (!done(el)) await sleep(70);
 			finish(el);
 		} else if (kind === 'scramble') {
 			const scr = el.querySelector<HTMLElement>('.scr');
 			el.classList.add('shown');
-			if (scr) await scramble(scr, scr.dataset.text ?? '', 700, () => done(el));
+			if (scr) await scramble(scr, scr.dataset.text ?? '', 360, () => done(el));
 			finish(el);
 		} else {
 			el.classList.add('shown');
 			el.dataset.done = '1';
-			await sleep(kind === 'row' ? 70 : 110);
+			await sleep(kind === 'row' ? 45 : 55);
 		}
 	}
 
