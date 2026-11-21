@@ -82,6 +82,21 @@ const PS1 = { user: 'jiawei', host: 'liu' };
 		</script>
 
 		<section class="hero" aria-labelledby="hero-name" data-seq="hero">
+			<div class="window" data-window>
+				<div class="titlebar">
+					<span class="lights">
+						<button type="button" class="light light-close" data-win="collapse" aria-label="Collapse the terminal window"></button>
+						<button type="button" class="light light-min" data-win="collapse" aria-label="Collapse the terminal window"></button>
+						<button type="button" class="light light-zoom" data-win="zoom" aria-label="Widen the terminal window"></button>
+					</span>
+					<span class="title" aria-hidden="true">
+						<Mascot icon />
+						<span class="title-text">{PS1.user}@{PS1.host}: ~ — <span data-win-proc>zsh</span></span>
+					</span>
+					<span class="title-key" aria-hidden="true">⌥⌘1</span>
+				</div>
+				<div class="window-body">
+				<div class="window-inner">
 			<p class="cmd" data-anim="type" aria-hidden="true">
 				<span class="ps1"><span class="u">{PS1.user}</span>@{PS1.host}</span><span class="path">:~</span><span class="sig">$</span>
 				<span class="typed">whoami</span>
@@ -156,6 +171,9 @@ const PS1 = { user: 'jiawei', host: 'liu' };
 						</span>
 					</span>
 				</form>
+			</div>
+				</div>
+				</div>
 			</div>
 		</section>
 

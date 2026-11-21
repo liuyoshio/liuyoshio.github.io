@@ -277,6 +277,37 @@ function initMascot(home: HTMLElement, reduceMotion: boolean) {
 	);
 }
 
+/* ------------------------------------------------------------------ window */
+
+function initWindow(home: HTMLElement) {
+	const win = home.querySelector<HTMLElement>('[data-window]');
+	if (!win) return;
+	const bar = win.querySelector<HTMLElement>('.titlebar');
+	const body = win.querySelector<HTMLElement>('.window-body');
+
+	const setCollapsed = (collapsed: boolean) => {
+		win.classList.toggle('collapsed', collapsed);
+		// Keep collapsed content out of the tab order and the accessibility tree.
+		if (body) body.inert = collapsed;
+	};
+	const toggleZoom = () => win.classList.toggle('zoomed');
+
+	for (const button of win.querySelectorAll<HTMLButtonElement>('[data-win]')) {
+		button.addEventListener('click', (event) => {
+			event.stopPropagation();
+			if (button.dataset.win === 'zoom') toggleZoom();
+			else setCollapsed(!win.classList.contains('collapsed'));
+		});
+	}
+	bar?.addEventListener('click', () => {
+		if (win.classList.contains('collapsed')) setCollapsed(false);
+	});
+	bar?.addEventListener('dblclick', (event) => {
+		if ((event.target as HTMLElement).closest('.light')) return;
+		if (!win.classList.contains('collapsed')) toggleZoom();
+	});
+}
+
 /* ------------------------------------------------------------- keyboard nav */
 
 function isTyping(target: EventTarget | null) {
@@ -292,6 +323,8 @@ function initKeys(home: HTMLElement) {
 		if (event.metaKey || event.ctrlKey || event.altKey || isTyping(event.target)) return;
 		if (event.key === '/' && input) {
 			event.preventDefault();
+			const win = home.querySelector<HTMLElement>('[data-window].collapsed');
+			if (win) win.querySelector<HTMLElement>('.titlebar')?.click();
 			input.focus({ preventScroll: true });
 			input.scrollIntoView({ block: 'center', behavior: 'smooth' });
 			return;
@@ -523,6 +556,15 @@ function initShell(home: HTMLElement, data: TermData) {
 	commands.ll = { help: '', run: commands.ls.run };
 	HIDDEN.add('man').add('ll');
 
+	const proc = home.querySelector<HTMLElement>('[data-win-proc]');
+	let procTimer = 0;
+	function showProc(name: string) {
+		if (!proc) return;
+		proc.textContent = name.slice(0, 16);
+		clearTimeout(procTimer);
+		procTimer = window.setTimeout(() => (proc.textContent = 'zsh'), 1400);
+	}
+
 	function execute(raw: string) {
 		const text = raw.trim();
 		print([
@@ -541,6 +583,7 @@ function initShell(home: HTMLElement, data: TermData) {
 		history.push(text);
 		cursor = history.length;
 		const [name, ...args] = text.split(/\s+/);
+		showProc(name);
 		const command = commands[name.toLowerCase()];
 		if (!command) {
 			print([styled('err', `command not found: ${name}. `, t('try ', 'dim'), run('help'))]);
@@ -664,6 +707,7 @@ if (home && dataEl) {
 	initEntrance(home, animate);
 	if (!reduceMotion) initSpotlight();
 	initHoverScramble(home, reduceMotion);
+	initWindow(home);
 	initMascot(home, reduceMotion);
 	initShell(home, data);
 	initKeys(home);

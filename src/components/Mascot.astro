@@ -46,19 +46,37 @@ BODY.forEach((row, y) => {
 	for (const match of row.matchAll(/#+/g)) runs.push({ x: match.index ?? 0, y, w: match[0].length });
 });
 
+interface Props {
+	/** Render a small static icon (e.g. for a window title bar) instead of the interactive cat. */
+	icon?: boolean;
+}
+const { icon = false } = Astro.props;
+
 const W = BODY[0].length;
 const H = BODY.length;
 ---
 
-<button type="button" class="mascot" aria-label="Pet the cat" title="Pet the cat">
-	<svg viewBox={`0 0 ${W} ${H}`} width={W * 7} height={H * 7} shape-rendering="crispEdges" aria-hidden="true">
-		<g class="mascot-body">
-			{runs.map(({ x, y, w }) => <rect x={x} y={y} width={w} height="1" />)}
-		</g>
-		<g class="mascot-tail mascot-tail-a">{TAIL_A.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
-		<g class="mascot-tail mascot-tail-b">{TAIL_B.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
-		<g class="mascot-look">
+{
+	icon ? (
+		<svg class="mascot-icon" viewBox={`0 0 ${W} ${H}`} width={W * 1.5} height={H * 1.5} shape-rendering="crispEdges" aria-hidden="true">
+			<g class="mascot-body">
+				{runs.map(({ x, y, w }) => <rect x={x} y={y} width={w} height="1" />)}
+				{TAIL_A.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}
+			</g>
 			<g class="mascot-eyes">{EYES.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
-		</g>
-	</svg>
-</button>
+		</svg>
+	) : (
+		<button type="button" class="mascot" aria-label="Pet the cat" title="Pet the cat">
+			<svg viewBox={`0 0 ${W} ${H}`} width={W * 7} height={H * 7} shape-rendering="crispEdges" aria-hidden="true">
+				<g class="mascot-body">
+					{runs.map(({ x, y, w }) => <rect x={x} y={y} width={w} height="1" />)}
+				</g>
+				<g class="mascot-tail mascot-tail-a">{TAIL_A.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
+				<g class="mascot-tail mascot-tail-b">{TAIL_B.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
+				<g class="mascot-look">
+					<g class="mascot-eyes">{EYES.map(([x, y]) => <rect x={x} y={y} width="1" height="1" />)}</g>
+				</g>
+			</svg>
+		</button>
+	)
+}
