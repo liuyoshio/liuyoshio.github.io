@@ -14,6 +14,12 @@ import ConsentGate from '../../components/diagrams/ConsentGate.astro';
 
 export const NAME = 'Lookma';
 
+<Callout type="note" title="Update">
+	Since this post, Claude Code runs headless through the Claude Agent SDK, so the tmux pane
+	reading described below is gone. Codex works as a second agent, and the voice was rebuilt.
+	[What changed](/blog/lookma-swaps-both-ends/).
+</Callout>
+
 The [launch post](/blog/introducing-lookma/) covers what {NAME} is and why I built it. The short
 version: you just say what you want, and an agent does it on your real screen, in your
 own apps, while you watch. Nothing happens in a cloud browser or a virtual machine. You see every
@@ -250,11 +256,11 @@ There are four parts.
   bar item with Pause, Type a Request… and Quit. ⌃⌥P pauses everything from any app, the microphone included.
 - **The overlay page inside that app.** A web page that draws captions, marks and cards, and runs
   the voice client over WebRTC.
-- **An executor adapter.** Today that is Claude Code in tmux, reached through an MCP channel, its
-  hooks, and tmux keys for the dialogs.
+- **An executor adapter.** Claude Code, headless through the Agent SDK, or Codex through its app
+  server. Each is a plug-in folder.
 
 The contract between the core and an executor is small on purpose, so a different one can take the
-place of Claude Code. Codex is next.
+place of Claude Code. Codex was the first to do so.
 
 Everything listens on 127.0.0.1 only. Apart from Claude Code itself, which also sees screenshots of
 the app it works in, the one thing that leaves the machine is voice: your audio and the text it
@@ -270,7 +276,7 @@ Its limits today:
 - macOS only, and only the main display;
 - no drag and no right-click yet;
 - 10 to 20 seconds for a multi-step task;
-- it needs Claude Code;
+- it needs Claude Code or Codex;
 - voice needs an OpenAI key, though typing works without one.
 
 When I started, I thought the hard part of a visible agent would be the agent. The model was
